@@ -22,7 +22,40 @@ class Vertice {
 }
 //#endregion
 //#region Edge
+/**
+ * @typedef EdgeNotation
+ * @property {number} from
+ * @property {number} to
+ */
 class Edge {
+
+/**
+ * @param {unknown} source 
+ * @param {ReadonlyArray<connections[]>} 
+ * @returns {Edge}
+ */
+static import(source, connections, name = `source`) {
+	try {
+		
+		const shell = Object.import(source);
+		const from = Number.import(shell[`from`], `property from`);
+		const to = Number.import(shell[`to`], `property to`);
+		const result = new Edge(connections[from], connections[to]);
+
+		return result;
+	} catch (error) {
+		throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
+	}
+}
+
+/**
+ * @param {Edge}
+ * @returns {EdgeNotation}
+ */
+
+
+
+
 	/**
 	 * @param {Vertice} from 
 	 * @param {Vertice} to 
@@ -46,7 +79,31 @@ class Edge {
 }
 //#endregion
 //#region Graph
+
+/**
+ * @typedef GraphNotation
+*/
 class Graph {
+
+	/**
+	 * @param {unknown} source 
+	 * @returns {Graph}
+	 */
+	static import(source, name = `source`) {
+		try {
+			const shell = Object.import(source);
+			const length = Number.import(shell[`vertices`], `property vertices`);
+			const vertices = new Array(length);
+			const edges = Array.import(shell[`connections`], `property connections`).map((item, index) => Edge.import(item, vertices, `property connections[${(index)}]`));
+			const result = new Graph();
+			result.#vertices = vertices;
+			result.#edges = edges;
+			return result;
+		} catch (error) {
+			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
+		}
+	}
+
 	/** @type {Vertice[]} */
 	#vertices = [];
 	/** @readonly */
