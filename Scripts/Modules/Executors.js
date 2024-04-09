@@ -117,7 +117,7 @@ class FastEngine extends Engine {
 	/**
 	 * Gets the elapsed time since the engine started.
 	 * @readonly
-	 * @returns {number}
+	 * @returns {DOMHighResTimeStamp}
 	 */
 	get time() {
 		return this.#time;
