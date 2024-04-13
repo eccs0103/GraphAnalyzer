@@ -18,7 +18,8 @@ const AXIS_FACTOR = Object.freeze(new Point2D(1, -1));
  */
 const canvas = document.getElement(HTMLCanvasElement, `canvas#display`);
 /**
- * @type {CanvasRenderingContext2D} Canvas 2D drawing context
+ * Canvas 2D drawing context
+ * @type {CanvasRenderingContext2D}
  */
 const context = canvas.getContext(`2d`) ?? (() => {
 	throw new TypeError(`Context is missing`);
@@ -535,13 +536,15 @@ class Progenitor extends Node {
 		this.#enginePrecise.launched = value;
 	}
 	/**
-	 * @returns {number}
+	 * Gets the FPS limit of the engine.
+	 * @returns {number} The FPS limit
 	 */
 	get limit() {
 		return min(this.#engineFast.limit, this.#enginePrecise.limit);
 	}
 	/**
-	 * @param {number} value 
+	 * Sets the FPS limit of the engine.
+	 * @param {number} value The new FPS limit.
 	 * @returns {void}
 	 */
 	set limit(value) {
