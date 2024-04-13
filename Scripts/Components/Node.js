@@ -4,6 +4,8 @@ import { FastEngine, PreciseEngine } from "../Modules/Executors.js";
 import { } from "../Modules/Extensions.js";
 import { Point2D } from "../Modules/Measures.js";
 
+const { min } = Math;
+
 /**
  * Axis factors for coordinate transformation
  * @type {Readonly<Point2D>}
@@ -448,7 +450,6 @@ class Progenitor extends Node {
 		this.#enginePrecise.addEventListener(`update`, (event) => {
 			this.dispatchEvent(new Event(`fixedupdate`, { bubbles: true }));
 		});
-		this.FPSFixed = 1000;
 		//#endregion
 		//#region Behavior
 		this.addEventListener(`tryadopt`, (event) => {
@@ -534,6 +535,20 @@ class Progenitor extends Node {
 		this.#enginePrecise.launched = value;
 	}
 	/**
+	 * @returns {number}
+	 */
+	get limit() {
+		return min(this.#engineFast.limit, this.#enginePrecise.limit);
+	}
+	/**
+	 * @param {number} value 
+	 * @returns {void}
+	 */
+	set limit(value) {
+		this.#engineFast.limit = value;
+		this.#enginePrecise.limit = value;
+	}
+	/**
 	 * Gets the FPS of the engine.
 	 * @readonly
 	 * @returns {number} The FPS of the engine.
@@ -551,18 +566,11 @@ class Progenitor extends Node {
 	}
 	/**
 	 * Gets the fixed FPS of the engine.
+	 * @readonly
 	 * @returns {number} The fixed FPS of the engine.
 	 */
 	get FPSFixed() {
 		return this.#enginePrecise.FPS;
-	}
-	/**
-	 * Sets the fixed FPS of the engine.
-	 * @param {number} value The new value for the fixed FPS.
-	 * @returns {void}
-	 */
-	set FPSFixed(value) {
-		this.#enginePrecise.FPS = value;
 	}
 	/**
 	 * Gets the fixed delta time of the engine.
