@@ -15,7 +15,6 @@ import { Node, canvas, context, progenitor } from "./Node.js";
  */
 class Animator extends EventTarget {
 	/**
-	 * Creates a new instance of the Animator class.
 	 * @param {number} duration The duration of the animation.
 	 */
 	constructor(duration) {
@@ -59,6 +58,7 @@ class Animator extends EventTarget {
 	/**
 	 * Gets the duration of the animation.
 	 * @readonly
+	 * @returns {number}
 	 */
 	get duration() {
 		return this.#duration;
@@ -68,6 +68,7 @@ class Animator extends EventTarget {
 	/**
 	 * Gets the current frame of the animation.
 	 * @readonly
+	 * @returns {number}
 	 */
 	get frame() {
 		return this.#frame;
@@ -134,7 +135,6 @@ class Walker {
 		return result;
 	}
 	/**
-	 * Creates a new instance of the Walker class.
 	 * @param {Node} root The root node for traversal.
 	 */
 	constructor(root) {
@@ -189,12 +189,15 @@ class Renderer {
 	static #colorHighlight = Color.viaHSL(308, 100, 50);
 	/**
 	 * Gets the color used for highlighting.
+	 * @returns {Color}
 	 */
 	static get colorHighlight() {
 		return this.#colorHighlight;
 	}
 	/**
 	 * Sets the color used for highlighting.
+	 * @param {Color} value 
+	 * @returns {void}
 	 */
 	static set colorHighlight(value) {
 		this.#colorHighlight = value;
@@ -208,7 +211,7 @@ class Renderer {
 		context.save();
 		context.fillStyle = Renderer.colorHighlight.pass(0.1).toString(true);
 		context.strokeStyle = Renderer.colorHighlight.toString(true);
-		const { globalPosition: position, size } = entity;
+		const { position: position, size } = entity;
 		context.beginPath();
 		context.moveTo(position.x - size.x / 2, position.y - size.y / 2);
 		context.lineTo(position.x + size.x / 2, position.y - size.y / 2);

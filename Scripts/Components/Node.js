@@ -1,17 +1,22 @@
 "use strict";
 
-import { FastEngine } from "../Modules/Executors.js";
+import { FastEngine, PreciseEngine } from "../Modules/Executors.js";
 import { } from "../Modules/Extensions.js";
 import { Point2D } from "../Modules/Measures.js";
 
 /**
- * Represents the canvas element used for display.
+ * Axis factors for coordinate transformation
+ * @type {Readonly<Point2D>}
+ */
+const AXIS_FACTOR = Object.freeze(new Point2D(1, -1));
+
+/**
+ * Canvas element for display
  * @type {HTMLCanvasElement}
  */
 const canvas = document.getElement(HTMLCanvasElement, `canvas#display`);
 /**
- * Represents the rendering context for the canvas element.
- * @type {CanvasRenderingContext2D}
+ * @type {CanvasRenderingContext2D} Canvas 2D drawing context
  */
 const context = canvas.getContext(`2d`) ?? (() => {
 	throw new TypeError(`Context is missing`);
@@ -24,26 +29,10 @@ window.addEventListener(`resize`, (event) => {
 	const transform = context.getTransform();
 	transform.e = canvas.width / 2;
 	transform.f = canvas.height / 2;
-	transform.d *= -1;
+	transform.c *= AXIS_FACTOR.x;
+	transform.d *= AXIS_FACTOR.y;
 	context.setTransform(transform);
 });
-
-/**
- * Represents a factor used to modify the y-axis behavior for canvas rendering.
- * @type {Readonly<Point2D>}
- */
-const AXIS_FACTOR = Object.freeze(new Point2D(1, -1));
-/**
- * Represents a constant value for a 2D point.
- * @type {Readonly<Point2D>}
- */
-const CONSTANT_TWO_2D = Object.freeze(Point2D.repeat(2));
-
-/**
- * Represents the game engine instance.
- * @type {FastEngine}
- */
-const engine = new FastEngine();
 
 //#region Modification event
 /**
@@ -58,7 +47,6 @@ const engine = new FastEngine();
  */
 class ModificationEvent extends Event {
 	/**
-	 * Creates a new instance of ModificationEvent.
 	 * @param {string} type The type of the event.
 	 * @param {ModificationEventInit} dict The initialization dictionary.
 	 */
@@ -66,31 +54,26 @@ class ModificationEvent extends Event {
 		super(type, dict);
 		this.#node = dict.node;
 	}
-	/** @type {Node?} */
-	#node = null;
+	/** @type {Node} */
+	#node;
 	/**
-	 * Gets the node property of the ModificationEvent.
 	 * @readonly
-	 * @throws {ReferenceError} If the property is missing.
-	 * @returns {Node}
+	 * @returns {Node} The node associated with the modification event.
 	 */
 	get node() {
-		return this.#node ?? (() => {
-			throw new ReferenceError(`Modification property is missing`);
-		})();
+		return this.#node;
 	}
 }
 //#endregion
 //#region Group
 /**
- * Represents a group of nodes.
  * @template {Node} T
+ * Represents a group of nodes.
  */
 class Group {
 	/**
-	 * Creates a new instance of the Group class.
 	 * @param {Node} owner The owner node of the group.
-	 * @param {T[]} items The initial items to add to the group.
+	 * @param {...T} items Initial items to add to the group.
 	 */
 	constructor(owner, ...items) {
 		this.#owner = owner;
@@ -129,15 +112,15 @@ class Group {
 		child.dispatchEvent(new ModificationEvent(`abandon`, { node: parent }));
 	}
 	/**
-	 * Checks if the group contains a specific item.
-	 * @param {T} item The item to check for.
-	 * @returns {boolean} True if the group contains the item, false otherwise.
+	 * Checks if an item is in the group.
+	 * @param {T} item The item to check.
+	 * @returns {boolean} True if the item is in the group, otherwise false.
 	 */
 	has(item) {
 		return this.#nodes.has(item);
 	}
 	/**
-	 * Removes all items from the group.
+	 * Clears all items from the group.
 	 * @returns {void}
 	 */
 	clear() {
@@ -147,14 +130,14 @@ class Group {
 	}
 	/**
 	 * Gets the number of items in the group.
-	 * @returns {number}
+	 * @returns {number} The number of items in the group.
 	 */
 	get size() {
 		return this.#nodes.size;
 	}
 	/**
-	 * Returns an iterator for the items in the group.
-	 * @returns {Generator<T>} The iterator for the items.
+	 * Returns a generator that iterates over the items in the group.
+	 * @returns {Generator<T>} A generator for the items in the group.
 	 */
 	*[Symbol.iterator]() {
 		for (const item of this.#nodes) {
@@ -166,7 +149,7 @@ class Group {
 //#endregion
 //#region Node
 /**
- * @typedef NodeEventMap
+ * @typedef VirtualNodeEventMap
  * @property {ModificationEvent} tryadopt
  * @property {ModificationEvent} adopt
  * @property {ModificationEvent} tryabandon
@@ -179,13 +162,44 @@ class Group {
  * @property {Event} disconnect
  * @property {Event} start
  * @property {Event} update
+ * @property {Event} fixedupdate
  * @property {Event} render
+ * 
+ * @typedef {EventListener & VirtualNodeEventMap} NodeEventMap
  */
 
 /**
- * Represents a generic node with event capabilities.
+ * Represents a node in the virtual tree structure.
  */
 class Node extends EventTarget {
+	/**
+	 * Checks if the given node is a progenitor.
+	 * @param {Node} node The node to check.
+	 * @returns {boolean} True if the node is a progenitor, false otherwise.
+	 */
+	static isProgenitor(node) {
+		return node instanceof Progenitor;
+	}
+	/**
+	 * @param {Node} target 
+	 * @returns {void}
+	 */
+	static #adobt(target) {
+		target.#depth = target.parent.#depth + 1;
+		for (const child of target.children) {
+			Node.#adobt(child);
+		}
+	}
+	/**
+	 * @param {Node} target 
+	 * @returns {void}
+	 */
+	static #abandon(target) {
+		for (const child of target.children) {
+			Node.#abandon(child);
+		}
+		target.#depth = 0;
+	}
 	/**
 	 * @param {Node} target 
 	 * @returns {void}
@@ -209,7 +223,14 @@ class Node extends EventTarget {
 		target.dispatchEvent(new Event(`disconnect`));
 	}
 	/**
-	 * Creates a new instance of the Node class.
+	 * Retrieves the depth of a node in the virtual tree structure.
+	 * @param {Node} node The node to get the depth for.
+	 * @returns {number} The depth of the node.
+	 */
+	static getDepth(node) {
+		return node.#depth;
+	}
+	/**
 	 * @param {string} name The name of the node.
 	 */
 	constructor(name = `Node`) {
@@ -225,12 +246,14 @@ class Node extends EventTarget {
 
 		this.addEventListener(`adopt`, (event) => {
 			const peak = this.peak;
-			if (peak instanceof Progenitor || peak.#isConnected) {
+			Node.#adobt(this);
+			if (Node.isProgenitor(peak) || peak.#isConnected) {
 				Node.#connect(this);
 			}
 		});
 		this.addEventListener(`abandon`, (event) => {
 			Node.#disconnect(this);
+			Node.#abandon(this);
 		});
 	}
 	/**
@@ -256,9 +279,8 @@ class Node extends EventTarget {
 		return super.addEventListener(type, listener, options);
 	}
 	/**
-	 * Dispatches an event to the Progenitor and its descendants.
-	 * @param {Event} event The event to dispatch.
-	 * @returns {boolean} True if the event was not canceled, false otherwise.
+	 * @param {Event} event 
+	 * @returns {boolean} 
 	 */
 	dispatchEvent(event) {
 		if (!super.dispatchEvent(event)) return false;
@@ -273,12 +295,15 @@ class Node extends EventTarget {
 	#name = ``;
 	/**
 	 * Gets the name of the node.
+	 * @returns {string} The name of the node.
 	 */
 	get name() {
 		return this.#name;
 	}
 	/**
 	 * Sets the name of the node.
+	 * @param {string} value The new name for the node.
+	 * @returns {void}
 	 */
 	set name(value) {
 		this.#name = value;
@@ -286,9 +311,9 @@ class Node extends EventTarget {
 	/** @type {Node?} */
 	#parent = null;
 	/**
-	 * Gets the parent node.
-	 * @readonly
-	 * @throws {ReferenceError} If the parent is null.
+	 * Gets the parent node of the current node.
+	 * @returns {Node} The parent node.
+	 * @throws {ReferenceError} If the parent of the node is null.
 	 */
 	get parent() {
 		return this.#parent ?? (() => {
@@ -298,30 +323,32 @@ class Node extends EventTarget {
 	/** @type {Group<Node>} */
 	#children = new Group(this);
 	/**
-	 * Gets the children of the node.
-	 * @readonly
+	 * Gets the children nodes of the current node.
+	 * @returns {Group<Node>} The children nodes.
 	 */
 	get children() {
 		return this.#children;
 	}
 	/**
-	 * Gets the topmost ancestor of the node.
-	 * @readonly
+	 * Gets the peak node in the virtual tree structure.
+	 * @returns {Node} The peak node.
 	 */
 	get peak() {
 		for (let current = (/** @type {Node} */ (this)); true;) {
 			try {
 				current = current.parent;
-			} catch (error) {
+			} catch {
 				return current;
 			}
 		}
 	}
+	/** @type {number} */
+	#depth = 0;
 	/** @type {boolean} */
-	#isConnected = (this instanceof Progenitor);
+	#isConnected = Node.isProgenitor(this);
 	/**
-	 * Gets whether the node is connected.
-	 * @readonly
+	 * Gets whether the node is connected to progenitor.
+	 * @returns {boolean} True if the node is connected, otherwise false.
 	 */
 	get isConnected() {
 		return this.#isConnected;
@@ -329,15 +356,6 @@ class Node extends EventTarget {
 }
 //#endregion
 
-//#region Device types
-/** @enum {string} */
-const DeviceTypes = {
-	/** @readonly */ mobile: `mobile`,
-	/** @readonly */ tablet: `tablet`,
-	/** @readonly */ desktop: `desktop`,
-};
-Object.freeze(DeviceTypes);
-//#endregion
 //#region Pointer event
 /**
  * @typedef VirtualPointerEventInit
@@ -351,26 +369,22 @@ Object.freeze(DeviceTypes);
  */
 class PointerEvent extends Event {
 	/**
-	 * Creates a new PointerEvent.
 	 * @param {string} type The type of the event.
-	 * @param {PointerEventInit} dict The initialization options for the event.
+	 * @param {PointerEventInit} dict The event initialization dictionary.
 	 */
 	constructor(type, dict) {
 		super(type, dict);
 		this.#position = dict.position;
 	}
-	/** @type {Readonly<Point2D>?} */
-	#position = null;
+	/** @type {Readonly<Point2D>} */
+	#position;
 	/**
-	 * Gets the position property of the PointerEvent.
+	 * Gets the position of the pointer event.
 	 * @readonly
-	 * @throws {ReferenceError} If the property is missing.
-	 * @returns {Readonly<Point2D>} The position of the pointer.
+	 * @returns {Readonly<Point2D>} The position of the pointer event.
 	 */
 	get position() {
-		return this.#position ?? (() => {
-			throw new ReferenceError(`Pointer property is missing`);
-		})();
+		return this.#position;
 	}
 }
 //#endregion
@@ -385,14 +399,15 @@ class PointerEvent extends Event {
  */
 
 /**
- * Represents a special node called Progenitor with specific behaviors.
+ * Represents the main node in the virtual tree structure.
  */
 class Progenitor extends Node {
 	/** @type {Progenitor?} */
 	static #instance = null;
-	/** 
+	/**
 	 * Gets the singleton instance of Progenitor.
 	 * @readonly
+	 * @returns {Progenitor} The singleton instance of Progenitor.
 	 */
 	static get instance() {
 		return Progenitor.#instance ?? (() => {
@@ -405,24 +420,37 @@ class Progenitor extends Node {
 	/** @type {boolean} */
 	static #locked = true;
 	/**
-	 * Creates a new instance of the Progenitor class.
-	 * @param {string} name The name of the Progenitor node.
-	 * @throws {TypeError} If the constructor is called manually.
+	 * @param {string} name The name of the Progenitor.
+	 * @throws {TypeError} If the constructor is called directly.
 	 */
 	constructor(name = `Progenitor`) {
 		super(name);
 		if (Progenitor.#locked) throw new TypeError(`Illegal constructor`);
 
+		//#region Initialize
+		const controller = new AbortController();
+		controller.signal.addEventListener(`abort`, (event) => {
+			this.dispatchEvent(new Event(`start`, { bubbles: true }));
+		});
+		this.#engineFast.addEventListener(`start`, (event) => {
+			controller.abort();
+		}, { signal: controller.signal });
+		this.#enginePrecise.addEventListener(`start`, (event) => {
+			controller.abort();
+		}, { signal: controller.signal });
+
+		this.#engineFast.addEventListener(`update`, (event) => {
+			this.dispatchEvent(new Event(`update`, { bubbles: true }));
+		});
+		this.#enginePrecise.addEventListener(`update`, (event) => {
+			this.dispatchEvent(new Event(`fixedupdate`, { bubbles: true }));
+		});
+		this.FPSFixed = 1000;
+		//#endregion
+		//#region Behavior
 		this.addEventListener(`tryadopt`, (event) => {
 			event.preventDefault();
 			throw new EvalError(`Progenitor can't be adopted by any node`);
-		});
-
-		engine.addEventListener(`start`, (event) => {
-			this.dispatchEvent(new Event(`start`, { bubbles: true }));
-		});
-		engine.addEventListener(`update`, (event) => {
-			this.dispatchEvent(new Event(`update`, { bubbles: true }));
 		});
 
 		/** @type {boolean} */
@@ -480,6 +508,66 @@ class Progenitor extends Node {
 				isPointerMove = false;
 			}
 		});
+		//#endregion
+	}
+	/** @type {FastEngine} */
+	#engineFast = new FastEngine();
+	/** @type {PreciseEngine} */
+	#enginePrecise = new PreciseEngine();
+	/**
+	 * Gets whether the engine is launched.
+	 * @returns {boolean} True if engine is launched, otherwise false.
+	 */
+	get launched() {
+		return (this.#engineFast.launched && this.#enginePrecise.launched);
+	}
+	/**
+	 * Sets whether the engine is launched.
+	 * @param {boolean} value The new value for the launched state.
+	 * @returns {void}
+	 */
+	set launched(value) {
+		this.#engineFast.launched = value;
+		this.#enginePrecise.launched = value;
+	}
+	/**
+	 * Gets the FPS of the engine.
+	 * @readonly
+	 * @returns {number} The FPS of the engine.
+	 */
+	get FPS() {
+		return this.#engineFast.FPS;
+	}
+	/**
+	 * Gets the delta time of the engine.
+	 * @readonly
+	 * @returns {number} The delta time of the engine.
+	 */
+	get delta() {
+		return this.#engineFast.delta;
+	}
+	/**
+	 * Gets the fixed FPS of the engine.
+	 * @returns {number} The fixed FPS of the engine.
+	 */
+	get FPSFixed() {
+		return this.#enginePrecise.FPS;
+	}
+	/**
+	 * Sets the fixed FPS of the engine.
+	 * @param {number} value The new value for the fixed FPS.
+	 * @returns {void}
+	 */
+	set FPSFixed(value) {
+		this.#enginePrecise.FPS = value;
+	}
+	/**
+	 * Gets the fixed delta time of the engine.
+	 * @readonly
+	 * @returns {number} The fixed delta time of the engine.
+	 */
+	get deltaFixed() {
+		return this.#enginePrecise.delta;
 	}
 	/**
 	 * @template {keyof ProgenitorEventMap} K
@@ -533,9 +621,9 @@ class Progenitor extends Node {
 //#endregion
 
 /**
- * Represents the singleton instance of the Progenitor class.
+ * Singleton instance of the Progenitor class.
  * @type {Progenitor}
  */
 const progenitor = Progenitor.instance;
 
-export { canvas, context, AXIS_FACTOR, CONSTANT_TWO_2D, engine, ModificationEvent, Group, Node, PointerEvent, progenitor };
+export { canvas, context, ModificationEvent, Group, Node, PointerEvent, progenitor };
