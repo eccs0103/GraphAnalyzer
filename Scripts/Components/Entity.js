@@ -290,8 +290,7 @@ class Entity extends Node {
 		super(name);
 
 		this.addEventListener(`connect`, (event) => {
-			const depth = Node.getDepth(this);
-			Entity.#instances.add(this, depth);
+			Entity.#instances.add(this, Node.getDepth(this));
 		});
 		this.addEventListener(`disconnect`, (event) => {
 			Entity.#instances.delete(this);
@@ -330,6 +329,7 @@ class Entity extends Node {
 	#children = new Group(this);
 	/**
 	 * Gets the children of the entity.
+	 * @readonly
 	 * @returns {Group<Entity>} The children group.
 	 */
 	get children() {

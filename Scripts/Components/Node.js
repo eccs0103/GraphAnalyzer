@@ -73,7 +73,7 @@ class ModificationEvent extends Event {
 class Group {
 	/**
 	 * @param {Node} owner The owner node of the group.
-	 * @param {...T} items Initial items to add to the group.
+	 * @param {T[]} items Initial items to add to the group.
 	 */
 	constructor(owner, ...items) {
 		this.#owner = owner;
@@ -312,6 +312,7 @@ class Node extends EventTarget {
 	#parent = null;
 	/**
 	 * Gets the parent node of the current node.
+	 * @readonly
 	 * @returns {Node} The parent node.
 	 * @throws {ReferenceError} If the parent of the node is null.
 	 */
@@ -324,13 +325,15 @@ class Node extends EventTarget {
 	#children = new Group(this);
 	/**
 	 * Gets the children nodes of the current node.
+	 * @readonly
 	 * @returns {Group<Node>} The children nodes.
 	 */
 	get children() {
 		return this.#children;
 	}
 	/**
-	 * Gets the peak node in the virtual tree structure.
+	 * Gets the topmost ancestor of the node.
+	 * @readonly
 	 * @returns {Node} The peak node.
 	 */
 	get peak() {
