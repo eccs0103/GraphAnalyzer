@@ -10,7 +10,7 @@
 - Fixed collisions between vertices.
 
 ### 0.1.6 : Adaptive Game Engine 1.3.5 (27.03.2024)
-- Added edge.import() and Graph.import() functions
+- Added `Edge.import` and `Graph.import` functions.
 
 ### 0.1.5 : Adaptive Game Engine 1.3.5 (27.03.2024)
 - Core updated.

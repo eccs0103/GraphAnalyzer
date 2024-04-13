@@ -27,35 +27,24 @@ class Vertice {
  * @property {number} from
  * @property {number} to
  */
+
 class Edge {
-
-/**
- * @param {unknown} source 
- * @param {ReadonlyArray<connections[]>} 
- * @returns {Edge}
- */
-static import(source, connections, name = `source`) {
-	try {
-		
-		const shell = Object.import(source);
-		const from = Number.import(shell[`from`], `property from`);
-		const to = Number.import(shell[`to`], `property to`);
-		const result = new Edge(connections[from], connections[to]);
-
-		return result;
-	} catch (error) {
-		throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
+	/**
+	 * @param {unknown} source 
+	 * @param {Readonly<Vertice[]>} connections
+	 * @returns {Edge}
+	 */
+	static import(source, connections, name = `source`) {
+		try {
+			const shell = Object.import(source);
+			const from = Number.import(shell[`from`], `property from`);
+			const to = Number.import(shell[`to`], `property to`);
+			const result = new Edge(connections[from], connections[to]);
+			return result;
+		} catch (error) {
+			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
+		}
 	}
-}
-
-/**
- * @param {Edge}
- * @returns {EdgeNotation}
- */
-
-
-
-
 	/**
 	 * @param {Vertice} from 
 	 * @param {Vertice} to 
@@ -79,12 +68,7 @@ static import(source, connections, name = `source`) {
 }
 //#endregion
 //#region Graph
-
-/**
- * @typedef GraphNotation
-*/
 class Graph {
-
 	/**
 	 * @param {unknown} source 
 	 * @returns {Graph}
@@ -103,7 +87,6 @@ class Graph {
 			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
 		}
 	}
-
 	/** @type {Vertice[]} */
 	#vertices = [];
 	/** @readonly */
