@@ -85,8 +85,8 @@ class OrderedSet {
 		let place = 0;
 		for (let index = this.size; index > 0; index--) {
 			if (
-				(this.#pairs[index - 1].key >= importance) &&
-				(index < this.size ? importance > this.#pairs[index].key : true)
+				(this.#pairs[index - 1].key > importance) &&
+				(index < this.size ? importance >= this.#pairs[index].key : true)
 			) {
 				place = index;
 				break;
@@ -127,82 +127,6 @@ class OrderedSet {
 		for (const pair of this.#pairs) {
 			yield pair.value;
 		}
-	}
-}
-//#endregion
-//#region Ray cast
-/**
- * Represents a ray casting operation.
- */
-class RayCast {
-	/** @type {number} */
-	static #timeHolding = 300;
-	/**
-	 * Gets the holding time for the ray cast.
-	 * @returns {number} The holding time in milliseconds.
-	 */
-	static get timeHolding() {
-		return this.#timeHolding;
-	}
-	/**
-	 * Sets the holding time for the ray cast.
-	 * @param {number} value The new holding time in milliseconds.
-	 * @throws {RangeError} If the value is out of range.
-	 */
-	static set timeHolding(value) {
-		if (Number.isFinite(value) && value > 0) {
-			this.#timeHolding = value;
-		} else throw new RangeError(`Hold ${value} interval is out of range (0 - +∞)`);
-	}
-	/**
-	 * @param {Readonly<Point2D>} position The initial position of the ray cast.
-	 */
-	constructor(position) {
-		this.#pointInitialPosition = position;
-		this.#pointCurrentPosition = position;
-
-		let isMoved = false;
-		const tape = new Tape(Entity.getTargets(this.#pointInitialPosition));
-		const entity = tape.value;
-		if (entity === null) return;
-
-		const controller = new AbortController();
-		const idTimeout = setTimeout(() => {
-			entity.dispatchEvent(new PointerEvent(`hold`, { position: this.#pointCurrentPosition }));
-			controller.abort();
-		}, RayCast.#timeHolding);
-		controller.signal.addEventListener(`abort`, (event) => {
-			clearTimeout(idTimeout);
-		});
-		progenitor.addEventListener(`pointerup`, (event) => {
-			if (isMoved) {
-				entity.dispatchEvent(new PointerEvent(`dragend`, { position: this.#pointCurrentPosition }));
-			} else if (entity.isMesh(this.#pointCurrentPosition)) {
-				entity.dispatchEvent(new PointerEvent(`click`, { position: this.#pointCurrentPosition }));
-			}
-			controller.abort();
-		}, { signal: controller.signal });
-		progenitor.addEventListener(`pointermove`, (event) => {
-			this.#pointCurrentPosition = event.position;
-			if (!isMoved && this.#isGoneAway()) {
-				clearTimeout(idTimeout);
-				entity.dispatchEvent(new PointerEvent(`dragbegin`, { position: this.#pointCurrentPosition }));
-				isMoved = true;
-			}
-			if (isMoved) {
-				entity.dispatchEvent(new PointerEvent(`drag`, { position: this.#pointCurrentPosition }));
-			}
-		}, { signal: controller.signal });
-	}
-	/** @type {Readonly<Point2D>} */
-	#pointInitialPosition;
-	/** @type {Readonly<Point2D>} */
-	#pointCurrentPosition;
-	/**
-	 * @returns {boolean}
-	 */
-	#isGoneAway() {
-		return (hypot(...this.#pointCurrentPosition["-"](this.#pointInitialPosition)) > 4);
 	}
 }
 //#endregion
@@ -278,9 +202,74 @@ class Entity extends Node {
 		}
 		return;
 	}
+	/** @type {number} */
+	static #timeHolding = 300;
+	/**
+	 * Gets the holding time for the ray cast.
+	 * @returns {number} The holding time in milliseconds.
+	 */
+	static get timeHolding() {
+		return this.#timeHolding;
+	}
+	/**
+	 * Sets the holding time for the ray cast.
+	 * @param {number} value The new holding time in milliseconds.
+	 * @throws {RangeError} If the value is out of range.
+	 */
+	static set timeHolding(value) {
+		if (Number.isFinite(value) && value > 0) {
+			this.#timeHolding = value;
+		} else throw new RangeError(`Hold ${value} interval is out of range (0 - +∞)`);
+	}
+	/**
+	 * @param {Readonly<Point2D>} position 
+	 * @returns {void}
+	 */
+	static #rayCast(position) {
+		let pointCurrentPosition = position;
+		/**
+		 * @returns {boolean}
+		 */
+		function isGoneAway() {
+			return (hypot(...pointCurrentPosition["-"](position)) > 4);
+		}
+
+		let isMoved = false;
+		const tape = new Tape(Entity.getTargets(position));
+		const entity = tape.value;
+		if (entity === null) return;
+
+		const controller = new AbortController();
+		const idTimeout = setTimeout(() => {
+			entity.dispatchEvent(new PointerEvent(`hold`, { position: pointCurrentPosition }));
+			controller.abort();
+		}, Entity.#timeHolding);
+		controller.signal.addEventListener(`abort`, (event) => {
+			clearTimeout(idTimeout);
+		});
+		progenitor.addEventListener(`pointerup`, (event) => {
+			if (isMoved) {
+				entity.dispatchEvent(new PointerEvent(`dragend`, { position: pointCurrentPosition }));
+			} else if (entity.isMesh(pointCurrentPosition)) {
+				entity.dispatchEvent(new PointerEvent(`click`, { position: pointCurrentPosition }));
+			}
+			controller.abort();
+		}, { signal: controller.signal });
+		progenitor.addEventListener(`pointermove`, (event) => {
+			pointCurrentPosition = event.position;
+			if (!isMoved && isGoneAway()) {
+				clearTimeout(idTimeout);
+				entity.dispatchEvent(new PointerEvent(`dragbegin`, { position: pointCurrentPosition }));
+				isMoved = true;
+			}
+			if (isMoved) {
+				entity.dispatchEvent(new PointerEvent(`drag`, { position: pointCurrentPosition }));
+			}
+		}, { signal: controller.signal });
+	}
 	static {
 		progenitor.addEventListener(`pointerdown`, (event) => {
-			new RayCast(event.position);
+			Entity.#rayCast(event.position);
 		});
 	}
 	/**
