@@ -3,6 +3,9 @@
 ## Information
 
 ## Feed
+### 0.3.3 : Adaptive Game Engine 1.5.0 (17.04.2024)
+*Unstable intermediate version*
+
 ### 0.3.2 : Adaptive Game Engine 1.5.0 (13.04.2024)
 - Unstable functions temporarily removed.
 - Structure improved.

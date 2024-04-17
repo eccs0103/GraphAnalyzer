@@ -46,6 +46,20 @@ class Edge {
 		}
 	}
 	/**
+	 * @param {Readonly<Vertice[]>} connections
+	 * @returns {EdgeNotation}
+	 */
+	export(connections) {
+		const indexFrom = connections.indexOf(this.#from);
+		if (indexFrom < 0) throw new ReferenceError(`Unable to find the index of from`);
+		const indexTo = connections.indexOf(this.#to);
+		if (indexTo < 0) throw new ReferenceError(`Unable to find the index of to`);
+		return {
+			from: indexFrom,
+			to: indexTo
+		};
+	}
+	/**
 	 * @param {Vertice} from 
 	 * @param {Vertice} to 
 	 */
@@ -68,6 +82,12 @@ class Edge {
 }
 //#endregion
 //#region Graph
+/**
+ * @typedef GraphNotation
+ * @property {number} vertices
+ * @property {EdgeNotation[]} connections
+ */
+
 class Graph {
 	/**
 	 * @param {unknown} source 
