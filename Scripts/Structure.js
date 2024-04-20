@@ -27,62 +27,56 @@ class Vertice {}
  */
 
 class Edge {
-  /**
-   * @param {unknown} source
-   * @param {Readonly<Vertice[]>} connections
-   * @returns {Edge}
-   */
-  static import(source, connections, name = `source`) {
-    try {
-      const shell = Object.import(source);
-      const from = Number.import(shell[`from`], `property from`);
-      const to = Number.import(shell[`to`], `property to`);
-      const result = new Edge(connections[from], connections[to]);
-      return result;
-    } catch (error) {
-      throw new TypeError(
-        `Unable to import ${name} due its ${typename(source)} type`,
-        { cause: error }
-      );
-    }
-  }
-
-  /**
-   * @param {Readonly<Vertice[]>} connections 
-   * @returns {EdgeNotation}
-   */
-  export(connections){
-	const indexFrom = connections.indexOf(this.#from);
-	if(indexFrom < 0) throw ReferenceError(`Unable to find index of from`);
-	const indexTo = connections.indexOf(this.#to);
-	if(indexTo < 0) throw ReferenceError(`Unable to find index of to`);
-	return {
-		from: indexFrom,
-		to : indexTo
-	};
-  }
-
-
-  /**
-   * @param {Vertice} from
-   * @param {Vertice} to
-   */
-  constructor(from, to) {
-    this.#from = from;
-    this.#to = to;
-  }
-  /** @type {Vertice} */
-  #from;
-  /** @readonly */
-  get from() {
-    return this.#from;
-  }
-  /** @type {Vertice} */
-  #to;
-  /** @readonly */
-  get to() {
-    return this.#to;
-  }
+	/**
+	 * @param {unknown} source 
+	 * @param {Readonly<Vertice[]>} connections
+	 * @returns {Edge}
+	 */
+	static import(source, connections, name = `source`) {
+		try {
+			const shell = Object.import(source);
+			const from = Number.import(shell[`from`], `property from`);
+			const to = Number.import(shell[`to`], `property to`);
+			const result = new Edge(connections[from], connections[to]);
+			return result;
+		} catch (error) {
+			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
+		}
+	}
+	/**
+	 * @param {Readonly<Vertice[]>} connections
+	 * @returns {EdgeNotation}
+	 */
+	export(connections) {
+		const indexFrom = connections.indexOf(this.#from);
+		if (indexFrom < 0) throw new ReferenceError(`Unable to find the index of from`);
+		const indexTo = connections.indexOf(this.#to);
+		if (indexTo < 0) throw new ReferenceError(`Unable to find the index of to`);
+		return {
+			from: indexFrom,
+			to: indexTo
+		};
+	}
+	/**
+	 * @param {Vertice} from 
+	 * @param {Vertice} to 
+	 */
+	constructor(from, to) {
+		this.#from = from;
+		this.#to = to;
+	}
+	/** @type {Vertice} */
+	#from;
+	/** @readonly */
+	get from() {
+		return this.#from;
+	}
+	/** @type {Vertice} */
+	#to;
+	/** @readonly */
+	get to() {
+		return this.#to;
+	}
 }
 //#endregion
 //#region Graph
@@ -91,6 +85,7 @@ class Edge {
  * @property {number} vertices
  * @property {EdgeNotation[]} connections
  */
+
 class Graph {
   /**
    * @param {unknown} source
