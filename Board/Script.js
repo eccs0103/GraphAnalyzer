@@ -114,16 +114,16 @@ try {
 		static #locked = true;
 		/**
 		 * @param {Readonly<Point2D>} point 
-		 * @returns {VerticeEntity}
+		 * @returns {void}
 		 */
 		static tryPlaceAt(point) {
 			if (!VerticeEntity.#canPlaceAt(point)) throw new EvalError(`Unable to place at ${point.toFixed()}, 'cause there is already a vertice nearby.`);
 			this.#locked = false;
 			const vertice = new VerticeEntity();
 			this.#locked = true;
-			vertice.position = point;
+
 			progenitor.children.add(vertice);
-			return vertice;
+			vertice.position = point;
 		}
 		/**
 		 * @param {string} name 
@@ -144,16 +144,21 @@ try {
 					vertice.#index--;
 				}
 				graph.removeVertice(this.#index);
-				for (const edge of this.#connections) {
+
+				for (let index = this.#connections.length - 1; index >= 0; index--) {
+					const edge = this.#connections[index];
+					this.#connections.splice(index, 1);
 					edge.dispatchEvent(new LinkEvent(`unlink`, { vertice: this, edge: edge }));
 				}
 			});
 
 			this.addEventListener(`link`, (event) => {
-				this.#connections.add(event.edge);
+				this.#connections.push(event.edge);
 			});
 			this.addEventListener(`unlink`, (event) => {
-				this.#connections.delete(event.edge);
+				const index = this.#connections.indexOf(event.edge);
+				if (index < 0) return;
+				this.#connections.splice(index, 1);
 			});
 
 			this.addEventListener(`render`, () => {
@@ -181,16 +186,9 @@ try {
 			});
 			//#endregion
 			//#region Edge control
-			this.addEventListener(`dragbegin`, (event) => {
+			this.addEventListener(`dragbegin`, async (event) => {
 				if (!inputEdgeTool.checked) return;
-				EdgeEntity.tryLinkThe(this);
-			});
-
-			this.addEventListener(`link`, (event) => {
-				console.log(`${this.name}: ${event.type}`);
-			});
-			this.addEventListener(`unlink`, (event) => {
-				console.log(`${this.name}: ${event.type}`);
+				await EdgeEntity.tryLinkFrom(this);
 			});
 			//#endregion
 		}
@@ -219,6 +217,13 @@ try {
 		/** @type {number} */
 		#index;
 		/**
+		 * @readonly
+		 * @returns {number}
+		 */
+		get index() {
+			return this.#index;
+		}
+		/**
 		 * @returns {string}
 		 */
 		get name() {
@@ -231,8 +236,8 @@ try {
 		set name(value) {
 			super.name = value;
 		}
-		/** @type {Set<EdgeEntity>} */
-		#connections = new Set();
+		/** @type {EdgeEntity[]} */
+		#connections = [];
 		/**
 		 * @returns {Readonly<Point2D>}
 		 */
@@ -280,14 +285,6 @@ try {
 	//#endregion
 	//#region Edge entity
 	class VerticeSocket {
-		/**
-		 * @param {EdgeEntity} edge 
-		 */
-		constructor(edge) {
-			this.#edge = edge;
-		}
-		/** @type {EdgeEntity} */
-		#edge;
 		/** @type {VerticeEntity?} */
 		#data = null;
 		/**
@@ -301,31 +298,9 @@ try {
 		 * @returns {void}
 		 */
 		set data(value) {
-			if (value === null) {
-				if (this.#data === null) return;
-				const edge = this.#edge;
-				const vertice = this.#data;
-				this.#data = null;
-				vertice.dispatchEvent(new LinkEvent(`unlink`, { vertice: vertice, edge: edge }));
-			}
-			if (value !== null) {
-				if (this.#data !== null) return;
-				const edge = this.#edge;
-				const vertice = value;
-				this.#data = vertice;
-				vertice.dispatchEvent(new LinkEvent(`link`, { vertice: vertice, edge: edge }));
-			}
+			this.#data = value;
 		}
-	};
-
-	/**
-	 * @enum {string}
-	 */
-	const EdgeSelections = {
-		/** @readonly */ from: `from`,
-		/** @readonly */ to: `to`,
-	};
-	Object.freeze(EdgeSelections);
+	}
 
 	/**
 	 * @typedef VirtualEdgeEntityEventMap
@@ -340,25 +315,47 @@ try {
 		static #locked = true;
 		/**
 		 * @param {VerticeEntity} vertice 
-		 * @returns {void}
+		 * @returns {Promise<void>}
 		 */
-		static tryLinkThe(vertice) {
+		static async tryLinkFrom(vertice) {
 			this.#locked = false;
 			const edge = new EdgeEntity();
 			this.#locked = true;
 			progenitor.children.add(edge);
-			edge.#from = vertice;
+
+			edge.#from.data = vertice;
+			vertice.dispatchEvent(new LinkEvent(`link`, { vertice: vertice, edge: edge }));
+
 			const controller = new AbortController();
-			vertice.addEventListener(`dragend`, (event) => {
-				const target = VerticeEntity.getMemberAt(event.position);
-				if (target === null) {
-					progenitor.children.remove(edge);
-				}
-				edge.#to = target;
-				edge.dispatchEvent(new Event(`link`));
+			const promise = (/** @type {Promise<VerticeEntity?>} */ (new Promise((resolve) => {
+				vertice.addEventListener(`dragend`, (event) => {
+					resolve(VerticeEntity.getMemberAt(event.position));
+				}, { signal: controller.signal });
+			})));
+			promise.finally(() => {
 				controller.abort();
-			}, { signal: controller.signal });
+			});
+
+			const target = await promise;
+			if (target === null) {
+				edge.#from.data = null;
+				progenitor.children.remove(edge);
+				vertice.dispatchEvent(new LinkEvent(`unlink`, { vertice: vertice, edge: edge }));
+			} else {
+				edge.#to.data = target;
+				graph.addEdge(vertice.index, target.index);
+				target.dispatchEvent(new LinkEvent(`link`, { vertice: target, edge: edge }));
+			}
 		}
+		static #width = min(canvas.width, canvas.height) / 128;
+		static {
+			window.addEventListener(`resize`, (event) => {
+				EdgeEntity.#width = min(canvas.width, canvas.height) / 128;
+			});
+		}
+		/**
+		 * @todo Fix drag position
+		 */
 		/** @type {Readonly<Point2D>} */
 		static #pointPointerPosition = Object.freeze(Point2D.repeat(NaN));
 		static {
@@ -374,20 +371,31 @@ try {
 			if (EdgeEntity.#locked) throw new TypeError(`Illegal constructor`);
 
 			//#region Behavior
-			// this.addEventListener(`unlink`, (event) => {
-			// 	progenitor.children.remove(this);
-			// 	const [socketCurrent, socketOther] = this.#orderSocketsBy(event.vertice);
-			// 	socketCurrent.data = null;
-			// 	const vertice = socketOther.data;
-			// 	if (vertice === null) return;
-			// 	vertice.dispatchEvent(new LinkEvent(`unlink`, { vertice: vertice, edge: this }));
-			// });
+			this.addEventListener(`disconnect`, (event) => {
+				for (const socket of [this.#from, this.#to]) {
+					const previous = socket.data;
+					socket.data = null;
+					if (previous === null) continue;
+					previous.dispatchEvent(new LinkEvent(`unlink`, { vertice: previous, edge: this }));
+				}
+			});
+
+			this.addEventListener(`unlink`, (event) => {
+				const [from, to] = this.#orderSocketsBy(event.vertice);
+				if (from.data === null || to.data === null) return;
+				graph.removeEdge(from.data.index, to.data.index);
+				from.data = null;
+				const previous = to.data;
+				to.data = null;
+				previous.dispatchEvent(new LinkEvent(`unlink`, { vertice: previous, edge: this }));
+			});
 
 			this.addEventListener(`render`, () => {
 				context.save();
+				context.lineWidth = EdgeEntity.#width;
 				context.strokeStyle = colorForeground.invert().toString(true);
-				const verticeFrom = this.#from;
-				const verticeTo = this.#to;
+				const verticeFrom = this.#from.data;
+				const verticeTo = this.#to.data;
 				const pointFrom = (verticeFrom === null ? EdgeEntity.#pointPointerPosition : verticeFrom.position);
 				const pointTo = (verticeTo === null ? EdgeEntity.#pointPointerPosition : verticeTo.position);
 				context.beginPath();
@@ -399,11 +407,9 @@ try {
 			});
 			//#endregion
 			//#region Edge control
-			this.addEventListener(`link`, (event) => {
-				console.log(`${this.name}: ${event.type}`);
-			});
-			this.addEventListener(`unlink`, (event) => {
-				console.log(`${this.name}: ${event.type}`);
+			this.addEventListener(`click`, (event) => {
+				if (!inputEdgeTool.checked) return;
+				progenitor.children.remove(this);
 			});
 			//#endregion
 		}
@@ -429,27 +435,23 @@ try {
 			// @ts-ignore
 			return super.addEventListener(type, listener, options);
 		}
-		// /** @type {VerticeSocket} */
-		// #from = new VerticeSocket(this);
-		// /** @type {VerticeSocket} */
-		// #to = new VerticeSocket(this);
-		/** @type {VerticeEntity?} */
-		#from = null;
-		/** @type {VerticeEntity?} */
-		#to = null;
-		// /**
-		//  * @param {VerticeEntity} vertice 
-		//  * @returns {[VerticeSocket, VerticeSocket]}
-		//  */
-		// #orderSocketsBy(vertice) {
-		// 	const socketFrom = this.#from;
-		// 	const socketTo = this.#to;
-		// 	if (socketFrom.data === vertice) {
-		// 		return [socketFrom, socketTo];
-		// 	} else if (socketTo.data === vertice) {
-		// 		return [socketTo, socketFrom];
-		// 	} else throw new ReferenceError(`Unabel to find vertice '${vertice.name}' in sockets`);
-		// }
+		/** @type {VerticeSocket} */
+		#from = new VerticeSocket();
+		/** @type {VerticeSocket} */
+		#to = new VerticeSocket();
+		/**
+		 * @param {VerticeEntity} vertice 
+		 * @returns {[VerticeSocket, VerticeSocket]}
+		 */
+		#orderSocketsBy(vertice) {
+			const socketFrom = this.#from;
+			const socketTo = this.#to;
+			if (socketFrom.data === vertice) {
+				return [socketFrom, socketTo];
+			} else if (socketTo.data === vertice) {
+				return [socketTo, socketFrom];
+			} else throw new ReferenceError(`Unabel to find vertice '${vertice.name}' in sockets`);
+		}
 	}
 	//#endregion
 	//#region Canvas

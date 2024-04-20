@@ -14,40 +14,29 @@
 	<meta name="robots" content="index, follow">
 	<meta name="language" content="English">
 	<meta name="revisit-after" content="0 days">
-	<title>Board - Graphs Theory</title>
+	<title>Textbox - Graphs Theory</title>
 	<link rel="shortcut icon" href="../Resources/Circuit (Transparent).gif" media="(prefers-color-scheme: light)">
 	<link rel="shortcut icon" href="../Resources/Circuit (Transparent).gif" media="(prefers-color-scheme: dark)">
 	<link rel="stylesheet" href="../Styles/Global.css">
 	<link rel="stylesheet" href="../Styles/Themes/Material.css">
 	<link rel="stylesheet" href="./Style.css">
 	<script type="module" src="./Script.js"></script>
-	<script type="module" src="../Scripts/Components/Finalizer.js"></script>
 </head>
 
 <body>
 	<nav class="layer rounded flex">
-		<a href="../Board/" role="combobox" aria-checked="true" title="Board" class="with-padding flex secondary-centered with-gap">
+		<a href="../Board/" role="combobox" title="Board" class="with-padding flex secondary-centered with-gap">
 			<img src="../Resources/Icons/Grid.png" alt="Board" class="icon">
 		</a>
-		<a href="../Textbox/" role="combobox" title="Textbox" class="with-padding flex secondary-centered with-gap">
+		<a href="../Textbox/" role="combobox" aria-checked="true" title="Textbox" class="with-padding flex secondary-centered with-gap">
 			<img src="../Resources/Icons/AlignLeft.png" alt="Textbox" class="icon">
 		</a>
 	</nav>
 	<div class="display flex">
-		<canvas id="display"></canvas>
-	</div>
-	<div class="toolkit layer rounded">
-		<input id="vertice-tool" type="radio" name="toolkit" hidden checked>
-		<label for="vertice-tool" class="with-padding flex secondary-centered with-gap">
-			<img src="../Resources/Icons/ScatterPlot.png" alt="Vertice" class="icon">
-		</label>
-		<input id="edge-tool" type="radio" name="toolkit" hidden>
-		<label for="edge-tool" class="with-padding flex secondary-centered with-gap">
-			<img src="../Resources/Icons/Timeline.png" alt="Edge" class="icon">
-		</label>
+		<textarea id="input-field" placeholder="Input the structure" class="with-padding large-padding"></textarea>
 	</div>
 	<div class="menu layer rounded">
-		<button id="capture-canvas" class="with-padding flex secondary-centered with-gap">
+		<button id="execute-program" class="with-padding highlight-background flex secondary-centered with-gap">
 			<img src="../Resources/Icons/Camera.png" alt="Capture" class="icon">
 		</button>
 	</div>

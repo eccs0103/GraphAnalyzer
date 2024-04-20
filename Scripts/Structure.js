@@ -8,12 +8,6 @@ import { } from "./Modules/Palette.js";
 import { } from "./Modules/Storage.js";
 import { } from "./Modules/Time.js";
 
-import { } from "./Components/Node.js";
-import { } from "./Components/Entity.js";
-import { } from "./Components/InterfaceItem.js";
-import { } from "./Components/Corporeal.js";
-import { } from "./Components/Utilities.js";
-
 
 //#region Vertice
 /**
@@ -293,4 +287,52 @@ class Graph {
 }
 //#endregion
 
-export { Vertice, Edge, Graph };
+//#region Memory
+/**
+ * @typedef MemoryNotation
+ * @property {string} valueTextbox
+ */
+
+class Memory {
+	/**
+	 * @param {unknown} source 
+	 * @returns {Memory}
+	 */
+	static import(source, name = `source`) {
+		try {
+			const shell = Object.import(source);
+			const valueTextbox = String.import(shell[`valueTextbox`], `property valueTextbox`);
+			const result = new Memory();
+			result.#valueTextbox = valueTextbox;
+			return result;
+		} catch (error) {
+			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
+		}
+	}
+	/**
+	 * @returns {MemoryNotation}
+	 */
+	export() {
+		return {
+			valueTextbox: this.#valueTextbox
+		};
+	}
+	/** @type {string} */
+	#valueTextbox = `{\n\t"vertices": 15,\n\t"connections": [\n\t\t{\n\t\t\t"from": 1,\n\t\t\t"to": 2\n\t\t},\n\t\t{\n\t\t\t"from": 4,\n\t\t\t"to": 6\n\t\t},\n\t\t{\n\t\t\t"from": 8,\n\t\t\t"to": 12\n\t\t}\n\t]\n}`;
+	/**
+	 * @returns {string}
+	 */
+	get valueTextbox() {
+		return this.#valueTextbox;
+	}
+	/**
+	 * @param {string} value 
+	 * @returns {void}
+	 */
+	set valueTextbox(value) {
+		this.#valueTextbox = value;
+	}
+}
+//#endregion
+
+export { Vertice, Edge, Graph, Memory };
