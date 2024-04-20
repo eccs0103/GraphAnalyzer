@@ -3,6 +3,9 @@
 ## Information
 
 ## Feed
+### 0.3.5 : Adaptive Game Engine 1.5.0 (20.04.2024)
+- Fixed parameter order invariance in `Graph.addEdge` function.
+
 ### 0.3.4 : Adaptive Game Engine 1.5.0 (20.04.2024)
 - Added `Edge.exoprt` and `Graph.import` functions.
 
