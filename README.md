@@ -4,6 +4,7 @@
 
 ## Feed
 ### 0.4.10 : Adaptive Game Engine 1.5.0 (21.04.2024)
+*Unstable intermediate version*
 - Fixed graph edge control.
 - Optimized graph vertice connections.
 - Optimized graph vertice deletion.
