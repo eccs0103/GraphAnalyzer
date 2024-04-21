@@ -3,6 +3,14 @@
 ## Information
 
 ## Feed
+### 0.4.10 : Adaptive Game Engine 1.5.0 (21.04.2024)
+- Fixed graph edge control.
+- Optimized graph vertice connections.
+- Optimized graph vertice deletion.
+- Fixed error when deleting vertices.
+- Added JSON import page.
+- Added data saving.
+
 ### 0.4.7 : Adaptive Game Engine 1.5.0 (21.04.2024)
 - Fixed issue in `Graph.import` left from previous commit.
 
