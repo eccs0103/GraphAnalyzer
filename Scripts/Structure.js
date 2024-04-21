@@ -16,7 +16,81 @@ import { } from "./Components/Utilities.js";
 
 
 //#region Vertice
-class Vertice { }
+/**
+ * @typedef VerticeNotation
+ * @property {VerticeNotation[]} neighbors
+ */
+
+class Vertice {
+	/**
+	 * @param {Vertice} vertice
+	 * @returns {boolean}
+	 */
+	isNeighbor(vertice) {
+		return this.#neighbors.includes(vertice);
+	}
+	/**
+	 * @param {Vertice} vertice
+	 * @returns {void}
+	 */
+	#addNeighbor(vertice) {
+		if (this.isNeighbor(vertice))
+			throw new EvalError(`Failed to add already neighboring ${vertice.name} to ${this.name}`);
+		this.#neighbors.push(vertice);
+	}
+	/**
+	 * @param {Vertice} neighbor
+	 * @returns {void}
+	 */
+	#removeNeighbor(neighbor) {
+		const index = this.#neighbors.indexOf(neighbor);
+		if (index === -1)
+			throw new EvalError(`Failed to remove not neighboring ${neighbor.name} from ${this.name}`);
+		this.#neighbors.splice(index, 1);
+	}
+	/**
+	 * @param {Vertice} vertice1
+	 * @param {Vertice} vertice2
+	 * @returns {void}
+	 */
+	static addConnection(vertice1, vertice2) {
+		vertice1.#addNeighbor(vertice2);
+		vertice2.#addNeighbor(vertice1);
+	}
+	/**
+	 * @param {Vertice} vertice1
+	 * @param {Vertice} vertice2
+	 * @returns {void}
+	 */
+	static removeConnection(vertice1, vertice2) {
+		vertice1.#removeNeighbor(vertice2);
+		vertice2.#removeNeighbor(vertice1);
+	}
+	/**
+	 * @param {String} name
+	 */
+	constructor(name) {
+		this.#name = name;
+	}
+	/**@type {String} */
+	#name;
+	/** @readonly */
+	get name() {
+		return this.#name;
+	}
+	/**@type {Vertice[]} */
+	#neighbors = [];
+	/** @readonly */
+	get neighbors() {
+		return Object.freeze(this.#neighbors);
+	}
+	/**
+	 * @readonly
+	 */
+	get degree() {
+		return this.#neighbors.length;
+	}
+}
 //#endregion
 //#region Edge
 /**
@@ -36,11 +110,15 @@ class Edge {
 			const shell = Object.import(source);
 			const from = Number.import(shell[`from`], `property from`);
 			const to = Number.import(shell[`to`], `property to`);
-			const result = new Edge(connections[from], connections[to]);
+			const verticeFrom = connections[from];
+			const verticeTo = connections[to];
+			Vertice.addConnection(verticeFrom, verticeTo); // TODO not good
+			const result = new Edge(verticeFrom, verticeTo);
 			return result;
 		} catch (error) {
 			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
 		}
+
 	}
 	/**
 	 * @param {Readonly<Vertice[]>} connections
@@ -93,12 +171,14 @@ class Graph {
 	static import(source, name = `source`) {
 		try {
 			const shell = Object.import(source);
-			const length = Number.import(shell[`vertices`], `property vertices`);
-			const vertices = new Array(length);
-			const edges = Array.import(shell[`connections`], `property connections`).map((item, index) => Edge.import(item, vertices, `property connections[${index}]`));
 			const result = new Graph();
-			result.#vertices = vertices;
-			result.#edges = edges;
+			const verticeCount = Number.import(shell[`vertices`], `property vertices`);
+			for (let i = 0; i < verticeCount; i++) {
+				result.addVertice();
+			}
+			const edges = Array.import(shell[`connections`], `property connections`).map(
+				(item, index) => Edge.import(item, result.vertices, `property connections[${index}]`)
+			);
 			return result;
 		} catch (error) {
 			throw new TypeError(
@@ -107,20 +187,15 @@ class Graph {
 			);
 		}
 	}
-
 	/**
 	 * @returns {GraphNotation}
 	 */
-
 	export() {
-		const qanak = this.#vertices.length;
-		if (qanak < 0) throw ReferenceError(`Unable to build the graph`);
 		return {
-			vertices: qanak,
+			vertices: this.#vertices.length,
 			connections: this.#edges.map(edge => Edge.export())
 		};
 	}
-
 	/** @type {Vertice[]} */
 	#vertices = [];
 	/** @readonly */
@@ -128,10 +203,13 @@ class Graph {
 		return Object.freeze(this.#vertices);
 	}
 	/**
-	 * @returns {void}
+	 * @returns {Vertice}
 	 */
 	addVertice() {
-		this.#vertices.push(new Vertice());
+		const index = this.#vertices.length;
+		const vertice = new Vertice(`v${index}`);
+		this.#vertices.push(vertice);
+		return vertice;
 	}
 	/**
 	 * @param {number} index
@@ -143,6 +221,9 @@ class Graph {
 				`Vertice index ${index} is out of range [0 - ${this.#vertices.length})`
 			);
 		const verticeSelected = this.#vertices[index];
+		verticeSelected.neighbors.map(
+			(neighbor) => Vertice.removeConnection(neighbor, verticeSelected)
+		);
 		this.#edges = this.#edges.filter(
 			(edge) => edge.from !== verticeSelected && edge.to !== verticeSelected
 		);
@@ -181,6 +262,7 @@ class Graph {
 			) !== undefined
 		)
 			throw new EvalError(`Edge from ${from} to ${to} already exists`);
+		Vertice.addConnection(verticeFrom, verticeTo);
 		this.#edges.push(new Edge(verticeFrom, verticeTo));
 	}
 	/**
@@ -204,6 +286,7 @@ class Graph {
 		);
 		if (indexSelected < 0)
 			throw new ReferenceError(`Unable to find edge from ${from} to ${to}`);
+		Vertice.removeConnection(verticeFrom, verticeTo);
 		this.#edges.splice(indexSelected, 1);
 	}
 }
