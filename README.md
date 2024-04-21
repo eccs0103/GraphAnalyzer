@@ -3,9 +3,13 @@
 ## Information
 
 ## Feed
+### 0.4.7 : Adaptive Game Engine 1.5.0 (21.04.2024)
+- Fixed issue in `Graph.import` left from previous commit.
+
 ### 0.4.6 : Adaptive Game Engine 1.5.0 (21.04.2024)
 - Added `Vertice` class.
 - Fixed `Graph.export` function.
+
 ### 0.3.5 : Adaptive Game Engine 1.5.0 (20.04.2024)
 - Fixed parameter order invariance in `Graph.addEdge` function.
 

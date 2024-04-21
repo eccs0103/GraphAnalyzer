@@ -179,6 +179,7 @@ class Graph {
 			const edges = Array.import(shell[`connections`], `property connections`).map(
 				(item, index) => Edge.import(item, result.vertices, `property connections[${index}]`)
 			);
+			result.#edges = edges;
 			return result;
 		} catch (error) {
 			throw new TypeError(
