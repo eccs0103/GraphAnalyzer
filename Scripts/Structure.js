@@ -8,218 +8,86 @@ import { } from "./Modules/Palette.js";
 import { } from "./Modules/Storage.js";
 import { } from "./Modules/Time.js";
 
-//#region Vertice
-/**
- * @typedef VerticeNotation
- * @property {VerticeNotation[]} neighbors
- */
-
-class Vertice {
-	/**
-	 * @param {Vertice} vertice1
-	 * @param {Vertice} vertice2
-	 * @returns {void}
-	 */
-	static addConnection(vertice1, vertice2) {
-		vertice1.#neighbors.add(vertice2);
-		vertice2.#neighbors.add(vertice1);
-	}
-	/**
-	 * @param {Vertice} vertice1
-	 * @param {Vertice} vertice2
-	 * @returns {void}
-	 */
-	static removeConnection(vertice1, vertice2) {
-		vertice1.#neighbors.delete(vertice2);
-		vertice2.#neighbors.delete(vertice1);
-	}
-	/**
-	 * @param {string} name
-	 */
-	constructor(name) {
-		this.#name = name;
-	}
-	/** @type {string} */
-	#name;
-	/**
-	 * @readonly
-	 * @returns {string}
-	 */
-	get name() {
-		return this.#name;
-	}
-	/**
-	 * @param {Vertice} vertice
-	 * @returns {boolean}
-	 */
-	isNeighbor(vertice) {
-		return this.#neighbors.has(vertice);
-	}
-	/** @type {Set<Vertice>} */
-	#neighbors = new Set();
-	/**
-	 * @readonly
-	 * @returns {Set<Vertice>}
-	 */
-	get neighbors() {
-		return this.#neighbors;
-	}
-	/**
-	 * @readonly
-	 * @returns {number}
-	 */
-	get degree() {
-		return this.#neighbors.size;
-	}
-}
-//#endregion
-//#region Edge
-/**
- * @typedef EdgeNotation
- * @property {number} from
- * @property {number} to
- */
-
-class Edge {
-	/**
-	 * @param {unknown} source 
-	 * @param {Readonly<Vertice[]>} connections
-	 * @returns {Edge}
-	 */
-	static import(source, connections, name = `source`) {
-		try {
-			const shell = Object.import(source);
-			const from = connections[Number.import(shell[`from`], `property from`)];
-			const to = connections[Number.import(shell[`to`], `property to`)];
-			/**
-			 * @todo Not good
-			 */
-			Vertice.addConnection(from, to);
-			const result = new Edge(from, to);
-			return result;
-		} catch (error) {
-			throw new TypeError(`Unable to import ${(name)} due its ${typename(source)} type`, { cause: error });
-		}
-	}
-	/**
-	 * @param {Readonly<Vertice[]>} connections
-	 * @returns {EdgeNotation}
-	 */
-	export(connections) {
-		const indexFrom = connections.indexOf(this.#from);
-		if (indexFrom < 0) throw new ReferenceError(`Unable to find the index of from`);
-		const indexTo = connections.indexOf(this.#to);
-		if (indexTo < 0) throw new ReferenceError(`Unable to find the index of to`);
-		return {
-			from: indexFrom,
-			to: indexTo
-		};
-	}
-	/**
-	 * @param {Vertice} from 
-	 * @param {Vertice} to 
-	 */
-	constructor(from, to) {
-		this.#from = from;
-		this.#to = to;
-	}
-	/** @type {Vertice} */
-	#from;
-	/**
-	 * @readonly
-	 * @returns {Vertice}
-	 */
-	get from() {
-		return this.#from;
-	}
-	/** @type {Vertice} */
-	#to;
-	/**
-	 * @readonly
-	 * @returns {Vertice}
-	 */
-	get to() {
-		return this.#to;
-	}
-}
-//#endregion
 //#region Graph
-/**
- * @typedef GraphNotation
- * @property {number} vertices
- * @property {EdgeNotation[]} connections
- */
-
 class Graph {
+	//#region Vertice
 	/**
-	 * @param {unknown} source
-	 * @returns {Graph}
+	 * @typedef {InstanceType<Graph.Vertice>} GraphVertice
 	 */
-	static import(source, name = `source`) {
-		try {
-			const shell = Object.import(source);
-			const result = new Graph();
-			const count = Number.import(shell[`vertices`], `property vertices`);
-			for (let index = 0; index < count; index++) {
-				result.addVertice();
-			}
-			const edges = Array.import(shell[`connections`], `property connections`)
-				.map((item, index) => Edge.import(item, result.vertices, `property connections[${index}]`));
-			result.#edges = edges;
-			return result;
-		} catch (error) {
-			throw new TypeError(`Unable to import ${name} due its ${typename(source)} type`, { cause: error });
+	static Vertice = class GraphVertice {
+		/**
+		 * @param {GraphVertice} vertice1 
+		 * @param {GraphVertice} vertice2 
+		 * @returns {void}
+		 */
+		static connect(vertice1, vertice2) {
+			if (vertice1.#neighbors.has(vertice2) || vertice2.#neighbors.has(vertice1)) throw new EvalError(`Connection already exists`);
+			vertice1.#neighbors.add(vertice2);
+			vertice2.#neighbors.add(vertice1);
 		}
-	}
-	/**
-	 * @returns {GraphNotation}
-	 */
-	export() {
-		return {
-			vertices: this.#vertices.length,
-			connections: this.#edges.map(edge => edge.export(this.#vertices))
-		};
-	}
-	/** @type {Vertice[]} */
-	#vertices = [];
+		/**
+		 * @param {GraphVertice} vertice1 
+		 * @param {GraphVertice} vertice2 
+		 * @returns {void}
+		 */
+		static disconnect(vertice1, vertice2) {
+			if (!vertice1.#neighbors.has(vertice2) || !vertice2.#neighbors.has(vertice1)) throw new EvalError(`Connection doesn't exists`);
+			vertice1.#neighbors.delete(vertice2);
+			vertice2.#neighbors.delete(vertice1);
+		}
+		/** @type {Set<GraphVertice>} */
+		#neighbors = new Set();
+		/**
+		 * @readonly
+		 * @returns {Set<GraphVertice>}
+		 */
+		get neighbors() {
+			return this.#neighbors;
+		}
+		/**
+		 * @readonly
+		 * @returns {number}
+		 */
+		get degree() {
+			return this.#neighbors.size;
+		}
+		/**
+		 * @param {GraphVertice} vertice 
+		 * @returns {boolean}
+		 */
+		isNeighbor(vertice) {
+			return this.#neighbors.has(vertice);
+		}
+	};
+	//#endregion
+
+	/** @type {Map<number, GraphVertice>} */
+	#vertices = new Map();
 	/**
 	 * @readonly
-	 * @returns {Vertice[]}
+	 * @returns {Readonly<Map<number, GraphVertice>>}
 	 */
 	get vertices() {
-		return this.#vertices;
+		return Object.freeze(this.#vertices);
 	}
 	/**
-	 * @returns {Vertice}
+	 * @returns {number}
 	 */
 	addVertice() {
-		const index = this.#vertices.length;
-		const vertice = new Vertice(`v${index}`);
-		this.#vertices.push(vertice);
-		return vertice;
+		return (this.#vertices.push(new Graph.Vertice()) - 1);
 	}
 	/**
 	 * @param {number} index
 	 * @returns {void}
 	 */
 	removeVertice(index) {
-		if (!Number.isInteger(index) || 0 > index || index >= this.#vertices.length)
-			throw new RangeError(`Vertice index ${index} is out of range [0 - ${this.#vertices.length})`);
+		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
+		if (0 > index || index >= this.#vertices.length) throw new RangeError(`Index ${index} is out of range [0 - ${this.#vertices.length})`);
 		const verticeSelected = this.#vertices[index];
 		for (const neighbor of verticeSelected.neighbors) {
-			Vertice.removeConnection(neighbor, verticeSelected);
+			Graph.Vertice.disconnect(verticeSelected, neighbor);
 		}
-		this.#edges = this.#edges.filter((edge) => edge.from !== verticeSelected && edge.to !== verticeSelected);
 		this.#vertices.splice(index, 1);
-	}
-	/** @type {Edge[]} */
-	#edges = [];
-	/**
-	 * @readonly
-	 * @returns {Edge[]}
-	 */
-	get edges() {
-		return this.#edges;
 	}
 	/**
 	 * @param {number} from
@@ -228,16 +96,17 @@ class Graph {
 	 */
 	addEdge(from, to) {
 		[from, to] = [from, to].sort((a, b) => a - b);
-		if (!Number.isInteger(from) || 0 > from || from >= this.#vertices.length)
-			throw new RangeError(`Vertice index ${from} is out of range [0 - ${this.#vertices.length})`);
+		if (!Number.isInteger(from)) throw new TypeError(`Index ${from} is not finite integer number`);
+		if (0 > from || from >= this.#vertices.length) throw new RangeError(`Index ${from} is out of range [0 - ${this.#vertices.length})`);
 		const verticeFrom = this.#vertices[from];
-		if (!Number.isInteger(to) || 0 > to || to >= this.#vertices.length)
-			throw new RangeError(`Vertice index ${to} is out of range [0 - ${this.#vertices.length})`);
+		if (!Number.isInteger(to)) throw new TypeError(`Index ${to} is not finite integer number`);
+		if (0 > to || to >= this.#vertices.length) throw new RangeError(`Index ${to} is out of range [0 - ${this.#vertices.length})`);
 		const verticeTo = this.#vertices[to];
-		if (this.#edges.find((edge) => edge.from === verticeFrom && edge.to === verticeTo) !== undefined)
-			throw new EvalError(`Edge from ${from} to ${to} already exists`);
-		Vertice.addConnection(verticeFrom, verticeTo);
-		this.#edges.push(new Edge(verticeFrom, verticeTo));
+		try {
+			Graph.Vertice.connect(verticeFrom, verticeTo);
+		} catch (error) {
+			throw new EvalError(`Connection between ${from} and ${to} already exists`);
+		}
 	}
 	/**
 	 * @param {number} from
@@ -246,20 +115,31 @@ class Graph {
 	 */
 	removeEdge(from, to) {
 		[from, to] = [from, to].sort((a, b) => a - b);
-		if (!Number.isInteger(from) || 0 > from || from >= this.#vertices.length)
-			throw new RangeError(`Vertice index ${from} is out of range [0 - ${this.#vertices.length})`);
+		if (!Number.isInteger(from)) throw new TypeError(`Index ${from} is not finite integer number`);
+		if (0 > from || from >= this.#vertices.length) throw new RangeError(`Index ${from} is out of range [0 - ${this.#vertices.length})`);
 		const verticeFrom = this.#vertices[from];
-		if (!Number.isInteger(to) || 0 > to || to >= this.#vertices.length)
-			throw new RangeError(`Vertice index ${to} is out of range [0 - ${this.#vertices.length})`);
+		if (!Number.isInteger(to)) throw new TypeError(`Index ${to} is not finite integer number`);
+		if (0 > to || to >= this.#vertices.length) throw new RangeError(`Index ${to} is out of range [0 - ${this.#vertices.length})`);
 		const verticeTo = this.#vertices[to];
-		const indexSelected = this.#edges.findIndex((edge) => edge.from === verticeFrom && edge.to === verticeTo);
-		if (indexSelected < 0)
-			throw new ReferenceError(`Unable to find edge from ${from} to ${to}`);
-		Vertice.removeConnection(verticeFrom, verticeTo);
-		this.#edges.splice(indexSelected, 1);
+		try {
+			Graph.Vertice.disconnect(verticeFrom, verticeTo);
+		} catch (error) {
+			throw new EvalError(`Connection between ${from} and ${to} doesn't exists`);
+		}
 	}
 }
 //#endregion
+
+const unnamed = {
+	vertices: 15,
+	connections: [
+		{ from: 1, to: 2 },
+		{ from: 4, to: 6 },
+		{ from: 8, to: 12 }
+	]
+};
+const graph = Graph.import(unnamed);
+console.log(graph);
 
 //#region Memory
 /**
@@ -309,4 +189,4 @@ class Memory {
 }
 //#endregion
 
-export { Vertice, Edge, Graph, Memory };
+export { Graph, Memory };
