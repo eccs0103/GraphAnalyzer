@@ -130,17 +130,6 @@ class Graph {
 }
 //#endregion
 
-const unnamed = {
-	vertices: 15,
-	connections: [
-		{ from: 1, to: 2 },
-		{ from: 4, to: 6 },
-		{ from: 8, to: 12 }
-	]
-};
-const graph = Graph.import(unnamed);
-console.log(graph);
-
 //#region Memory
 /**
  * @typedef MemoryNotation
