@@ -3,6 +3,13 @@
 ## Information
 
 ## Feed
+### 0.4.14: Adaptive Game Engine 1.5.0 (24.04.2024)
+*Unstable intermediate version*
+- Reworked vertices in `Graph` class.
+- Added `Graph.import` and `Graph.export` functions (WIP).
+- Fixed errors in `Graph` class.
+- Implemented `EdgeEntity.isMesh` function.
+
 ### 0.4.10 : Adaptive Game Engine 1.5.0 (21.04.2024)
 *Unstable intermediate version*
 - Fixed graph edge control.

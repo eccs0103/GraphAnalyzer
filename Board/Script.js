@@ -495,23 +495,11 @@ try {
 			if (verticeFrom === null || verticeTo === null) return false;
 			const pointFrom = verticeFrom.position;
 			const pointTo = verticeTo.position;
-			
-			debugger;
-			return false;
-			// const pointFrom = Object.map(this.#from.data, data => data.position);
-			// const pointTo = Object.map(this.#to.data, data => data.position);
-			// if (pointFrom === null || pointTo === null) return false;
-			// console.log(pointFrom.toFixed(), pointTo.toFixed());
-			// try {
-			// 	const a = abs((point.y - pointFrom.y) - (point.x - pointFrom.x) * (pointTo.x - pointFrom.x) / (pointTo.y - pointFrom.y)) < EdgeEntity.#width
-			// 	return (
-			// 		a &&
-			// 		VerticeEntity.diameter / 2 < hypot(...point["-"](pointFrom)) && hypot(...point["-"](pointFrom)) < hypot(...pointFrom["-"](pointTo)) &&
-			// 		VerticeEntity.diameter / 2 < hypot(...point["-"](pointTo)) && hypot(...point["-"](pointTo)) < hypot(...pointFrom["-"](pointTo))
-			// 	);
-			// } finally {
-			// 	debugger;
-			// }
+			return (
+				abs((point.y - pointFrom.y) - (point.x - pointFrom.x) * (pointTo.y - pointFrom.y) / (pointTo.x - pointFrom.x)) < EdgeEntity.#width / 2 &&
+				VerticeEntity.diameter / 2 < hypot(...point["-"](pointFrom)) && hypot(...point["-"](pointFrom)) < hypot(...pointFrom["-"](pointTo)) &&
+				VerticeEntity.diameter / 2 < hypot(...point["-"](pointTo)) && hypot(...point["-"](pointTo)) < hypot(...pointFrom["-"](pointTo))
+			);
 		}
 		/** @type {EdgeEntitySocket} */
 		#from = new EdgeEntity.Socket();

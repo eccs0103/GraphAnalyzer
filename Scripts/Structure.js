@@ -9,6 +9,16 @@ import { } from "./Modules/Storage.js";
 import { } from "./Modules/Time.js";
 
 //#region Graph
+/**
+* @typedef EdgeNotation	
+* @property {number} from
+* @property {number} to
+*/
+/**
+ * @typedef GraphNotation
+ * @property {number[]} vertices
+ * @property {EdgeNotation[]} connections
+ */
 class Graph {
 	//#region Vertice
 	/**
@@ -68,21 +78,30 @@ class Graph {
 		try {
 			const shell = Object.import(source);
 			const result = new Graph();
-			const count = Number.import(shell[`vertices`], `property vertices`);
-			for (let index = 0; index < count; index++) {
-				result.addVertice();
+			const verticeIndices = Array.import(shell[`vertices`], `property vertices`);
+			for (const index of verticeIndices) {
+				result.addVertice(index);
 			}
 			const edges = Array.import(shell[`connections`], `property connections`);
-			for(const item of edges){
-				const from = Number.import(shell[`from`], `property from`);
-				const to = Number.import(shell[`to`], `property to`);
+			for (const item of edges) {
+				const from = Number.import(item[`from`], `property from`);
+				const to = Number.import(item[`to`], `property to`);
 				result.addEdge(from, to);
 			}
-			
 			return result;
 		} catch (error) {
 			throw new TypeError(`Unable to import ${name} due its ${typename(source)} type`, { cause: error });
 		}
+	}
+	/**
+	 * @todo DFS for connections
+	 * @returns {GraphNotation}
+	 */
+	export() {
+		return {
+			vertices: [],
+			connections: []
+		};
 	}
 	/** @type {Map<number, GraphVertice>} */
 	#vertices = new Map();
@@ -93,20 +112,26 @@ class Graph {
 	get vertices() {
 		return Object.freeze(this.#vertices);
 	}
-	/**@type {number} */
-	#verticeLast = 0;
 	/**
-	 * @returns {number}
+	 * @readonly
+	 * @returns {Set<number>}
 	 */
-	addVertice() {
-		this.#vertices.set(++this.#verticeLast, new Graph.Vertice());
-		return this.#verticeLast;
+	get verticeIndices(){
+		return new Set(this.#vertices.keys());
 	}
 	/**
 	 * @param {number} index
 	 * @returns {void}
 	 */
-	removeVertice(index) {		
+	addVertice(index) {
+		if (this.verticeIndices.has(index)) throw new EvalError(`Vertice of index ${index} already exists`);
+		this.#vertices.set(index, new Graph.Vertice());
+	}
+	/**
+	 * @param {number} index
+	 * @returns {void}
+	 */
+	removeVertice(index) {
 		const verticeSelected = this.#getVertice(index);
 		for (const neighbor of verticeSelected.neighbors) {
 			Graph.Vertice.disconnect(verticeSelected, neighbor);
@@ -119,8 +144,8 @@ class Graph {
 	 * @returns {void}
 	 */
 	addEdge(from, to) {
-		[from, to] = [from, to].sort((a, b) => a - b);		
-		const verticeFrom = this.#getVertice(from);		
+		[from, to] = [from, to].sort((a, b) => a - b);
+		const verticeFrom = this.#getVertice(from);
 		const verticeTo = this.#getVertice(to);
 		try {
 			Graph.Vertice.connect(verticeFrom, verticeTo);
@@ -135,7 +160,7 @@ class Graph {
 	 */
 	removeEdge(from, to) {
 		[from, to] = [from, to].sort((a, b) => a - b);
-		const verticeFrom = this.#getVertice(from);		
+		const verticeFrom = this.#getVertice(from);
 		const verticeTo = this.#getVertice(to);
 		try {
 			Graph.Vertice.disconnect(verticeFrom, verticeTo);
@@ -147,7 +172,7 @@ class Graph {
 	 * @param {number} index
 	 * @returns {GraphVertice}
 	 */
-	#getVertice(index){
+	#getVertice(index) {
 		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
 		if (!this.#vertices.has(index)) throw new RangeError(`Vertice with Index ${index} doesn't exist`);
 
@@ -157,11 +182,12 @@ class Graph {
 	 * @param {GraphVertice} vertice
 	 * @returns {number}
 	 */
-	#getIndex(vertice){
-		for(const [key, value] of this.#vertices)
+	#getIndex(vertice) {
+		for (const [key, value] of this.#vertices)
 			if (value === vertice)
 				return key;
 
+		//is this ok?
 		return -1;
 	}
 }
