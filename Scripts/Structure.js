@@ -60,7 +60,30 @@ class Graph {
 		}
 	};
 	//#endregion
-
+	/**
+	 * @param {unknown} source
+	 * @returns {Graph}
+	 */
+	static import(source, name = `source`) {
+		try {
+			const shell = Object.import(source);
+			const result = new Graph();
+			const count = Number.import(shell[`vertices`], `property vertices`);
+			for (let index = 0; index < count; index++) {
+				result.addVertice();
+			}
+			const edges = Array.import(shell[`connections`], `property connections`);
+			for(const item of edges){
+				const from = Number.import(shell[`from`], `property from`);
+				const to = Number.import(shell[`to`], `property to`);
+				result.addEdge(from, to);
+			}
+			
+			return result;
+		} catch (error) {
+			throw new TypeError(`Unable to import ${name} due its ${typename(source)} type`, { cause: error });
+		}
+	}
 	/** @type {Map<number, GraphVertice>} */
 	#vertices = new Map();
 	/**
@@ -70,24 +93,25 @@ class Graph {
 	get vertices() {
 		return Object.freeze(this.#vertices);
 	}
+	/**@type {number} */
+	#verticeLast = 0;
 	/**
 	 * @returns {number}
 	 */
 	addVertice() {
-		return (this.#vertices.push(new Graph.Vertice()) - 1);
+		this.#vertices.set(++this.#verticeLast, new Graph.Vertice());
+		return this.#verticeLast;
 	}
 	/**
 	 * @param {number} index
 	 * @returns {void}
 	 */
-	removeVertice(index) {
-		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
-		if (0 > index || index >= this.#vertices.length) throw new RangeError(`Index ${index} is out of range [0 - ${this.#vertices.length})`);
-		const verticeSelected = this.#vertices[index];
+	removeVertice(index) {		
+		const verticeSelected = this.#getVertice(index);
 		for (const neighbor of verticeSelected.neighbors) {
 			Graph.Vertice.disconnect(verticeSelected, neighbor);
 		}
-		this.#vertices.splice(index, 1);
+		this.#vertices.delete(index);
 	}
 	/**
 	 * @param {number} from
@@ -95,13 +119,9 @@ class Graph {
 	 * @returns {void}
 	 */
 	addEdge(from, to) {
-		[from, to] = [from, to].sort((a, b) => a - b);
-		if (!Number.isInteger(from)) throw new TypeError(`Index ${from} is not finite integer number`);
-		if (0 > from || from >= this.#vertices.length) throw new RangeError(`Index ${from} is out of range [0 - ${this.#vertices.length})`);
-		const verticeFrom = this.#vertices[from];
-		if (!Number.isInteger(to)) throw new TypeError(`Index ${to} is not finite integer number`);
-		if (0 > to || to >= this.#vertices.length) throw new RangeError(`Index ${to} is out of range [0 - ${this.#vertices.length})`);
-		const verticeTo = this.#vertices[to];
+		[from, to] = [from, to].sort((a, b) => a - b);		
+		const verticeFrom = this.#getVertice(from);		
+		const verticeTo = this.#getVertice(to);
 		try {
 			Graph.Vertice.connect(verticeFrom, verticeTo);
 		} catch (error) {
@@ -115,17 +135,34 @@ class Graph {
 	 */
 	removeEdge(from, to) {
 		[from, to] = [from, to].sort((a, b) => a - b);
-		if (!Number.isInteger(from)) throw new TypeError(`Index ${from} is not finite integer number`);
-		if (0 > from || from >= this.#vertices.length) throw new RangeError(`Index ${from} is out of range [0 - ${this.#vertices.length})`);
-		const verticeFrom = this.#vertices[from];
-		if (!Number.isInteger(to)) throw new TypeError(`Index ${to} is not finite integer number`);
-		if (0 > to || to >= this.#vertices.length) throw new RangeError(`Index ${to} is out of range [0 - ${this.#vertices.length})`);
-		const verticeTo = this.#vertices[to];
+		const verticeFrom = this.#getVertice(from);		
+		const verticeTo = this.#getVertice(to);
 		try {
 			Graph.Vertice.disconnect(verticeFrom, verticeTo);
 		} catch (error) {
-			throw new EvalError(`Connection between ${from} and ${to} doesn't exists`);
+			throw new EvalError(`Connection between ${from} and ${to} doesn't exist`);
 		}
+	}
+	/**
+	 * @param {number} index
+	 * @returns {GraphVertice}
+	 */
+	#getVertice(index){
+		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
+		if (!this.#vertices.has(index)) throw new RangeError(`Vertice with Index ${index} doesn't exist`);
+
+		return this.#vertices[index];
+	}
+	/**
+	 * @param {GraphVertice} vertice
+	 * @returns {number}
+	 */
+	#getIndex(vertice){
+		for(const [key, value] of this.#vertices)
+			if (value === vertice)
+				return key;
+
+		return -1;
 	}
 }
 //#endregion
