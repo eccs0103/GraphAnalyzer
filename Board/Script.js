@@ -9,7 +9,7 @@ import { Point2D } from "../Scripts/Modules/Measures.js";
 import { Color } from "../Scripts/Modules/Palette.js";
 import { Graph } from "../Scripts/Structure.js";
 
-const { min, hypot, PI } = Math;
+const { min, abs, hypot, PI } = Math;
 
 try {
 	const colorBackground = Color.tryParse(getComputedStyle(document.body).getPropertyValue(`--color-background`)) ?? (() => {
@@ -81,11 +81,13 @@ try {
 		/** @type {VerticeEntity[]} */
 		static #members = [];
 		/** @type {number} */
-		static #diameter = min(canvas.width, canvas.height) / 32;
-		static {
-			window.addEventListener(`resize`, (event) => {
-				VerticeEntity.#diameter = min(canvas.width, canvas.height) / 32;
-			});
+		static #diameter;
+		/**
+		 * @readonly
+		 * @returns {number}
+		 */
+		static get diameter() {
+			return this.#diameter;
 		}
 		/**
 		 * @param {Readonly<Point2D>} point 
@@ -117,13 +119,18 @@ try {
 		 * @returns {void}
 		 */
 		static tryPlaceAt(point) {
-			if (!VerticeEntity.#canPlaceAt(point)) throw new EvalError(`Unable to place at ${point.toFixed()}, 'cause there is already a vertice nearby.`);
-			this.#locked = false;
+			if (!VerticeEntity.#canPlaceAt(point)) return; // throw new EvalError(`Unable to place at ${point.toFixed()}, 'cause there is already a vertice nearby.`);
+			VerticeEntity.#locked = false;
 			const vertice = new VerticeEntity();
-			this.#locked = true;
-
+			VerticeEntity.#locked = true;
 			progenitor.children.add(vertice);
 			vertice.position = point;
+		}
+		static {
+			VerticeEntity.#diameter = min(canvas.width, canvas.height) / 32;
+			window.addEventListener(`resize`, (event) => {
+				VerticeEntity.#diameter = min(canvas.width, canvas.height) / 32;
+			});
 		}
 		/**
 		 * @param {string} name 
@@ -135,21 +142,20 @@ try {
 			//#region Behavior
 			this.addEventListener(`connect`, (event) => {
 				this.#index = VerticeEntity.#members.push(this) - 1;
-				graph.addVertice();
+				// graph.addVertice();
 			});
 			this.addEventListener(`disconnect`, (event) => {
-				VerticeEntity.#members.splice(this.#index, 1);
-				for (let index = this.#index; index < VerticeEntity.#members.length; index++) {
-					const vertice = VerticeEntity.#members[index];
-					vertice.#index--;
-				}
-				graph.removeVertice(this.#index);
-
 				for (let index = this.#connections.length - 1; index >= 0; index--) {
 					const edge = this.#connections[index];
 					this.#connections.splice(index, 1);
 					edge.dispatchEvent(new LinkEvent(`unlink`, { vertice: this, edge: edge }));
 				}
+
+				VerticeEntity.#members.splice(this.#index, 1);
+				for (let index = this.#index; index < VerticeEntity.#members.length; index++) {
+					VerticeEntity.#members[index].#index--;
+				}
+				// graph.removeVertice(this.#index);
 			});
 
 			this.addEventListener(`link`, (event) => {
@@ -186,9 +192,9 @@ try {
 			});
 			//#endregion
 			//#region Edge control
-			this.addEventListener(`dragbegin`, async (event) => {
+			this.addEventListener(`dragbegin`, (event) => {
 				if (!inputEdgeTool.checked) return;
-				await EdgeEntity.tryLinkFrom(this);
+				EdgeEntity.tryLinkFrom(this);
 			});
 			//#endregion
 		}
@@ -249,7 +255,7 @@ try {
 		 * @returns {void}
 		 */
 		set size(value) {
-			throw new TypeError(`Cannot set property position of #<VerticeEntity> which has only a getter`);
+			throw new TypeError(`Cannot set property size of #<VerticeEntity> which has only a getter`);
 		}
 		/**
 		 * @param {Readonly<Point2D>} point 
@@ -284,24 +290,6 @@ try {
 	}
 	//#endregion
 	//#region Edge entity
-	class VerticeSocket {
-		/** @type {VerticeEntity?} */
-		#data = null;
-		/**
-		 * @returns {VerticeEntity?}
-		 */
-		get data() {
-			return this.#data;
-		}
-		/**
-		 * @param {VerticeEntity?} value 
-		 * @returns {void}
-		 */
-		set data(value) {
-			this.#data = value;
-		}
-	}
-
 	/**
 	 * @typedef VirtualEdgeEntityEventMap
 	 * @property {LinkEvent} link
@@ -311,6 +299,29 @@ try {
 	 */
 
 	class EdgeEntity extends Entity {
+		//#region Socket
+		/**
+		 * @typedef {InstanceType<EdgeEntity.Socket>} EdgeEntitySocket
+		 */
+		static Socket = class EdgeEntitySocket {
+			/** @type {VerticeEntity?} */
+			#data = null;
+			/**
+			 * @returns {VerticeEntity?}
+			 */
+			get data() {
+				return this.#data;
+			}
+			/**
+			 * @param {VerticeEntity?} value 
+			 * @returns {void}
+			 */
+			set data(value) {
+				this.#data = value;
+			}
+		};
+		//#endregion
+
 		/** @type {boolean} */
 		static #locked = true;
 		/**
@@ -318,9 +329,9 @@ try {
 		 * @returns {Promise<void>}
 		 */
 		static async tryLinkFrom(vertice) {
-			this.#locked = false;
+			EdgeEntity.#locked = false;
 			const edge = new EdgeEntity();
-			this.#locked = true;
+			EdgeEntity.#locked = true;
 			progenitor.children.add(edge);
 
 			edge.#from.data = vertice;
@@ -343,22 +354,31 @@ try {
 				vertice.dispatchEvent(new LinkEvent(`unlink`, { vertice: vertice, edge: edge }));
 			} else {
 				edge.#to.data = target;
-				graph.addEdge(vertice.index, target.index);
+				// graph.addEdge(vertice.index, target.index);
 				target.dispatchEvent(new LinkEvent(`link`, { vertice: target, edge: edge }));
 			}
 		}
-		static #width = min(canvas.width, canvas.height) / 128;
+		/** @type {number} */
+		static #width;
+		/**
+		 * @readonly
+		 * @returns {number}
+		 */
+		static get width() {
+			return this.#width;
+		}
+		/** @type {Readonly<Point2D>} */
+		static #pointPointerPosition;
 		static {
+			EdgeEntity.#width = min(canvas.width, canvas.height) / 128;
 			window.addEventListener(`resize`, (event) => {
 				EdgeEntity.#width = min(canvas.width, canvas.height) / 128;
 			});
-		}
-		/**
-		 * @todo Fix drag position
-		 */
-		/** @type {Readonly<Point2D>} */
-		static #pointPointerPosition = Object.freeze(Point2D.repeat(NaN));
-		static {
+
+			/**
+			 * @todo Fix drag position
+			 */
+			EdgeEntity.#pointPointerPosition = Object.freeze(Point2D.repeat(NaN));
 			progenitor.addEventListener(`pointermove`, (event) => {
 				EdgeEntity.#pointPointerPosition = event.position;
 			});
@@ -374,16 +394,16 @@ try {
 			this.addEventListener(`disconnect`, (event) => {
 				for (const socket of [this.#from, this.#to]) {
 					const previous = socket.data;
-					socket.data = null;
 					if (previous === null) continue;
+					socket.data = null;
 					previous.dispatchEvent(new LinkEvent(`unlink`, { vertice: previous, edge: this }));
 				}
 			});
 
 			this.addEventListener(`unlink`, (event) => {
 				const [from, to] = this.#orderSocketsBy(event.vertice);
-				if (from.data === null || to.data === null) return;
-				graph.removeEdge(from.data.index, to.data.index);
+				if (from.data === null || to.data === null) throw new ReferenceError(`Any of vertices of edge ${this.name} is missing`);
+				// graph.removeEdge(from.data.index, to.data.index);
 				from.data = null;
 				const previous = to.data;
 				to.data = null;
@@ -435,13 +455,71 @@ try {
 			// @ts-ignore
 			return super.addEventListener(type, listener, options);
 		}
-		/** @type {VerticeSocket} */
-		#from = new VerticeSocket();
-		/** @type {VerticeSocket} */
-		#to = new VerticeSocket();
+		/**
+		 * @returns {string}
+		 */
+		get name() {
+			const from = Object.map(this.#from.data, data => data.index) ?? NaN;
+			const to = Object.map(this.#to.data, data => data.index) ?? NaN;
+			return `${super.name} (${from} - ${to})`;
+		}
+		/**
+		 * @param {string} value 
+		 * @returns {void}
+		 */
+		set name(value) {
+			super.name = value;
+		}
+		/**
+		 * @returns {Readonly<Point2D>}
+		 */
+		get size() {
+			const from = (Object.map(this.#from.data, data => data.position) ?? Point2D.repeat(NaN));
+			const to = (Object.map(this.#to.data, data => data.position) ?? Point2D.repeat(NaN));
+			return Object.freeze(new Point2D(abs(to.x - from.x), abs(to.y - from.y)));
+		}
+		/**
+		 * @param {Readonly<Point2D>} value 
+		 * @returns {void}
+		 */
+		set size(value) {
+			throw new TypeError(`Cannot set property size of #<EdgeEntity> which has only a getter`);
+		}
+		/**
+		 * @param {Readonly<Point2D>} point 
+		 * @returns {boolean}
+		 */
+		isMesh(point) {
+			const verticeFrom = this.#from.data;
+			const verticeTo = this.#to.data;
+			if (verticeFrom === null || verticeTo === null) return false;
+			const pointFrom = verticeFrom.position;
+			const pointTo = verticeTo.position;
+			
+			debugger;
+			return false;
+			// const pointFrom = Object.map(this.#from.data, data => data.position);
+			// const pointTo = Object.map(this.#to.data, data => data.position);
+			// if (pointFrom === null || pointTo === null) return false;
+			// console.log(pointFrom.toFixed(), pointTo.toFixed());
+			// try {
+			// 	const a = abs((point.y - pointFrom.y) - (point.x - pointFrom.x) * (pointTo.x - pointFrom.x) / (pointTo.y - pointFrom.y)) < EdgeEntity.#width
+			// 	return (
+			// 		a &&
+			// 		VerticeEntity.diameter / 2 < hypot(...point["-"](pointFrom)) && hypot(...point["-"](pointFrom)) < hypot(...pointFrom["-"](pointTo)) &&
+			// 		VerticeEntity.diameter / 2 < hypot(...point["-"](pointTo)) && hypot(...point["-"](pointTo)) < hypot(...pointFrom["-"](pointTo))
+			// 	);
+			// } finally {
+			// 	debugger;
+			// }
+		}
+		/** @type {EdgeEntitySocket} */
+		#from = new EdgeEntity.Socket();
+		/** @type {EdgeEntitySocket} */
+		#to = new EdgeEntity.Socket();
 		/**
 		 * @param {VerticeEntity} vertice 
-		 * @returns {[VerticeSocket, VerticeSocket]}
+		 * @returns {[EdgeEntitySocket, EdgeEntitySocket]}
 		 */
 		#orderSocketsBy(vertice) {
 			const socketFrom = this.#from;
@@ -459,19 +537,11 @@ try {
 		if (!inputVerticeTool.checked) return;
 		try {
 			VerticeEntity.tryPlaceAt(event.position);
-		} catch (error) {
-			/**
-			 * @todo Maybe useless.
-			 */
-			console.log(Error.generate(error));
-		}
+		} catch { }
 	});
 
 	buttonCaptureCanvas.addEventListener(`click`, async () => {
 		try {
-			/**
-			 * @todo Change downloading type to link.
-			 */
 			canvas.toBlob((blob) => {
 				if (blob === null) throw new ReferenceError(`Unable to initialize canvas for capture`);
 				navigator.download(new File([blob], `${Date.now()}.png`));
