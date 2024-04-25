@@ -3,7 +3,18 @@
 ## Information
 
 ## Feed
-### 0.4.14: Adaptive Game Engine 1.5.0 (24.04.2024)
+### 0.5.0 : Adaptive Game Engine 1.5.0 (25.04.2024)
+- Fixed `Graph.#getVertice` function.
+- Code fragmentation improved.
+- Enhanced structure of displayed elements.
+- Fixed edge error when deleting vertices.
+- View synchronized with models.
+- Vertice deletion speed increased.
+- Edge cursor capture speed increased.
+- Improved error descriptions.
+- Loading stabilized.
+
+### 0.4.14 : Adaptive Game Engine 1.5.0 (24.04.2024)
 *Unstable intermediate version*
 - Reworked vertices in `Graph` class.
 - Added `Graph.import` and `Graph.export` functions (WIP).

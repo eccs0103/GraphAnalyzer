@@ -10,15 +10,17 @@ import { } from "./Modules/Time.js";
 
 //#region Graph
 /**
-* @typedef EdgeNotation	
+* @typedef EdgeNotation
 * @property {number} from
 * @property {number} to
 */
+
 /**
  * @typedef GraphNotation
  * @property {number[]} vertices
  * @property {EdgeNotation[]} connections
  */
+
 class Graph {
 	//#region Vertice
 	/**
@@ -70,6 +72,7 @@ class Graph {
 		}
 	};
 	//#endregion
+
 	/**
 	 * @param {unknown} source
 	 * @returns {Graph}
@@ -107,24 +110,37 @@ class Graph {
 	#vertices = new Map();
 	/**
 	 * @readonly
-	 * @returns {Readonly<Map<number, GraphVertice>>}
-	 */
-	get vertices() {
-		return Object.freeze(this.#vertices);
-	}
-	/**
-	 * @readonly
 	 * @returns {Set<number>}
 	 */
-	get verticeIndices(){
+	get vertices() {
 		return new Set(this.#vertices.keys());
+	}
+	/**
+	 * @param {number} index
+	 * @returns {GraphVertice}
+	 */
+	#getVertice(index) {
+		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
+		return this.#vertices.get(index) ?? (() => {
+			throw new RangeError(`Vertice with index ${index} doesn't exist`);
+		})();
+	}
+	/**
+	 * @param {GraphVertice} vertice
+	 * @returns {number}
+	 */
+	#getIndex(vertice) {
+		for (const [key, value] of this.#vertices) {
+			if (value === vertice) return key;
+		}
+		return NaN;
 	}
 	/**
 	 * @param {number} index
 	 * @returns {void}
 	 */
 	addVertice(index) {
-		if (this.verticeIndices.has(index)) throw new EvalError(`Vertice of index ${index} already exists`);
+		if (this.vertices.has(index)) throw new EvalError(`Vertice of index ${index} already exists`);
 		this.#vertices.set(index, new Graph.Vertice());
 	}
 	/**
@@ -168,31 +184,8 @@ class Graph {
 			throw new EvalError(`Connection between ${from} and ${to} doesn't exist`);
 		}
 	}
-	/**
-	 * @param {number} index
-	 * @returns {GraphVertice}
-	 */
-	#getVertice(index) {
-		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
-		if (!this.#vertices.has(index)) throw new RangeError(`Vertice with Index ${index} doesn't exist`);
-
-		return this.#vertices[index];
-	}
-	/**
-	 * @param {GraphVertice} vertice
-	 * @returns {number}
-	 */
-	#getIndex(vertice) {
-		for (const [key, value] of this.#vertices)
-			if (value === vertice)
-				return key;
-
-		//is this ok?
-		return -1;
-	}
 }
 //#endregion
-
 //#region Memory
 /**
  * @typedef MemoryNotation
