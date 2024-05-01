@@ -22,6 +22,42 @@ import { } from "./Modules/Time.js";
  */
 
 class Graph {
+	/**
+	 * @param {unknown} source
+	 * @returns {Graph}
+	 * @throws {TypeError}
+	 */
+	static import(source, name = `source`) {
+		try {
+			const shell = Object.import(source);
+			const result = new Graph();
+			const vertexIndices = Array.import(shell[`vertices`], `property vertices`);
+			for (const index of vertexIndices) {
+				result.addVertex(index);
+			}
+			const edges = Array.import(shell[`connections`], `property connections`);
+			for (const item of edges) {
+				const from = Number.import(item[`from`], `property from`);
+				const to = Number.import(item[`to`], `property to`);
+				result.addEdge(from, to);
+			}
+			return result;
+		} catch (error) {
+			throw new TypeError(`Unable to import ${name} due its ${typename(source)} type`, { cause: error });
+		}
+	}
+	/**
+	 * @returns {GraphNotation}
+	 */
+	export() {
+		const dfs = new Graph.DFS(this);
+		dfs.traverse();
+		return {
+			vertices: Array.from(this.vertices),
+			connections: Array.from(dfs.connections)
+		};
+	}
+
 	//#region Vertex
 	/**
 	 * @typedef {InstanceType<Graph.Vertex>} GraphVertex
@@ -31,6 +67,7 @@ class Graph {
 		 * @param {GraphVertex} vertex1 
 		 * @param {GraphVertex} vertex2 
 		 * @returns {void}
+		 * @throws {EvalError}
 		 */
 		static connect(vertex1, vertex2) {
 			if (vertex1.#neighbors.has(vertex2) || vertex2.#neighbors.has(vertex1)) throw new EvalError(`Connection already exists`);
@@ -41,6 +78,7 @@ class Graph {
 		 * @param {GraphVertex} vertex1 
 		 * @param {GraphVertex} vertex2 
 		 * @returns {void}
+		 * @throws {EvalError}
 		 */
 		static disconnect(vertex1, vertex2) {
 			if (!vertex1.#neighbors.has(vertex2) || !vertex2.#neighbors.has(vertex1)) throw new EvalError(`Connection doesn't exists`);
@@ -72,7 +110,6 @@ class Graph {
 		}
 	};
 	//#endregion
-
 	//#region DFS
 	/**
 	 * @typedef {InstanceType<Graph.DFS>} GraphDFS
@@ -90,25 +127,28 @@ class Graph {
 		 * @returns {void}
 		 */
 		traverse() {
-			if (this.#graph.vertices.size === 0) return;
+			// if (this.#graph.vertices.size === 0) return;
 			while (true) {
 				const unvisitedVertices = this.#getUnvisitedVertices();
-				if (unvisitedVertices.size === 0)
+				if (unvisitedVertices.size === 0) break;
+				for (const startVertex of unvisitedVertices) {
+					this.traverseConnectedComponent(startVertex);
 					break;
-
-				const startVertex = this.#graph.vertices.values().next().value;
-				this.traverseConnectedComponent(startVertex);
+				}
 			}
 		}
 		/**
 		 * @param {number} startVertex
 		 * @returns {void}
+		 * @throws {RangeError}
 		 */
 		traverseConnectedComponent(startVertex) {
 			if (!this.#graph.vertices.has(startVertex)) throw new RangeError(`Vertex with index ${startVertex} doesn't exist`);
+			/** @type {Map<number, boolean>} */
 			const visited = new Map();
-			for (const index of this.#graph.vertices)
-				visited[index] = false;
+			for (const index of this.#graph.vertices) {
+				visited.set(index, false);
+			}
 			this.#traverse(startVertex, visited);
 		}
 		/**
@@ -116,24 +156,28 @@ class Graph {
 		 */
 		#getUnvisitedVertices() {
 			const unvisitedVertices = new Set(this.#graph.vertices);
-			for (const vertex of unvisitedVertices)
-				if (this.#vertices.has(vertex))
+			for (const vertex of unvisitedVertices) {
+				if (this.#vertices.has(vertex)) {
 					unvisitedVertices.delete(vertex);
+				}
+			}
 			return unvisitedVertices;
 		}
 		/**
 		 * @param {number} startVertex
 		 * @param {Map<number, boolean>} visited
 		 * @returns {void}
+		 * @throws {TypeError}
+		 * @throws {RangeError}
 		 */
 		#traverse(startVertex, visited) {
-			visited[startVertex] = true;
-			const neighbors = this.#graph.getNeighborsOf(startVertex);
-			for (const neighbor of neighbors) {
+			visited.set(startVertex, true);
+			for (const neighbor of this.#graph.getNeighborsOf(startVertex)) {
 				this.#vertices.add(neighbor);
 				this.#connections.add({ from: startVertex, to: neighbor });
-				if (!visited[neighbor])
+				if (!visited.get(neighbor)) {
 					this.#traverse(neighbor, visited);
+				}
 			}
 		}
 		/** @type {Set<number>} */
@@ -157,41 +201,6 @@ class Graph {
 	};
 	//#endregion
 
-	/**
-	 * @param {unknown} source
-	 * @returns {Graph}
-	 */
-	static import(source, name = `source`) {
-		try {
-			const shell = Object.import(source);
-			const result = new Graph();
-			const vertexIndices = Array.import(shell[`vertices`], `property vertices`);
-			for (const index of vertexIndices) {
-				result.addVertex(index);
-			}
-			const edges = Array.import(shell[`connections`], `property connections`);
-			for (const item of edges) {
-				const from = Number.import(item[`from`], `property from`);
-				const to = Number.import(item[`to`], `property to`);
-				result.addEdge(from, to);
-			}
-			return result;
-		} catch (error) {
-			throw new TypeError(`Unable to import ${name} due its ${typename(source)} type`, { cause: error });
-		}
-	}
-	/**
-	 * @todo DFS for connections
-	 * @returns {GraphNotation}
-	 */
-	export() {
-		const dfs = new Graph.DFS(this);
-		dfs.traverse();
-		return {
-			vertices: Array.from(this.vertices),
-			connections: Array.from(dfs.connections)
-		};
-	}
 	/** @type {Map<number, GraphVertex>} */
 	#vertices = new Map();
 	/**
@@ -206,6 +215,8 @@ class Graph {
 	/**
 	 * @param {number} index
 	 * @returns {GraphVertex}
+	 * @throws {TypeError}
+	 * @throws {RangeError}
 	 */
 	#getVertex(index) {
 		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
@@ -223,6 +234,7 @@ class Graph {
 	/**
 	 * @param {number} index
 	 * @returns {void}
+	 * @throws {EvalError}
 	 */
 	addVertex(index) {
 		if (this.vertices.has(index)) throw new EvalError(`Vertex of index ${index} already exists`);
@@ -233,6 +245,9 @@ class Graph {
 	/**
 	 * @param {number} index
 	 * @returns {void}
+	 * @throws {TypeError}
+	 * @throws {RangeError}
+	 * @throws {EvalError}
 	 */
 	removeVertex(index) {
 		const verticeSelected = this.#getVertex(index);
@@ -246,6 +261,9 @@ class Graph {
 	 * @param {number} from
 	 * @param {number} to
 	 * @returns {void}
+	 * @throws {TypeError}
+	 * @throws {RangeError}
+	 * @throws {EvalError}
 	 */
 	addEdge(from, to) {
 		[from, to] = [from, to].sort((a, b) => a - b);
@@ -261,6 +279,9 @@ class Graph {
 	 * @param {number} from
 	 * @param {number} to
 	 * @returns {void}
+	 * @throws {TypeError}
+	 * @throws {RangeError}
+	 * @throws {EvalError}
 	 */
 	removeEdge(from, to) {
 		[from, to] = [from, to].sort((a, b) => a - b);
@@ -275,12 +296,15 @@ class Graph {
 	/**
 	 * @param {number} index
 	 * @returns {Set<number>}
+	 * @throws {TypeError}
+	 * @throws {RangeError}
 	 */
 	getNeighborsOf(index) {
-		const vertex = this.#getVertex(index);
+		/** @type {Set<number>} */
 		const neighborIndices = new Set();
-		for (const neighbor of vertex.neighbors)
+		for (const neighbor of this.#getVertex(index).neighbors) {
 			neighborIndices.add(this.#getIndex(neighbor));
+		}
 		return neighborIndices;
 	}
 }
