@@ -73,6 +73,90 @@ class Graph {
 	};
 	//#endregion
 
+	//#region DFS
+	/**
+	 * @typedef {InstanceType<Graph.DFS>} GraphDFS
+	 */
+	static DFS = class GraphDFS {
+		/** @type {Graph} */
+		#graph;
+		/**
+		 * @param {Graph} graph
+		 */ 
+		constructor(graph){
+			this.#graph = graph;
+		}
+		/** 
+		 * @returns {void}
+		 */
+		traverse(){
+			if(this.#graph.vertices.size === 0) return;			
+			while(true) {
+				const unvisitedVertices = this.#getUnvisitedVertices();
+				if(unvisitedVertices.size === 0)
+					break;
+				
+				const startVertice = this.#graph.vertices.values().next().value;
+				this.traverseConnectedComponent(startVertice);
+			}			
+		}
+		/**
+		 * @param {number} startVertice
+		 * @returns {void}
+		 */
+		traverseConnectedComponent(startVertice){
+			if(!this.#graph.vertices.has(startVertice)) throw new RangeError(`Vertice with index ${startVertice} doesn't exist`);			
+			const visited = new Map();
+			for(const index of this.#graph.vertices)
+				visited[index] = false;
+			this.#traverse(startVertice, visited);
+		}
+		/**
+		 * @returns {Set<number>}
+		 */
+		#getUnvisitedVertices(){
+			const unvisitedVertices = new Set(this.#graph.vertices);
+			for(const vertice of unvisitedVertices)
+				if(this.#vertices.has(vertice))
+					unvisitedVertices.delete(vertice);
+			return unvisitedVertices;
+		}
+		/**
+		 * @param {number} startVertice
+		 * @param {Map<number, boolean>} visited
+		 * @returns {void}
+		 */
+		#traverse(startVertice, visited){
+			visited[startVertice] = true;
+			const neighbors = this.#graph.getNeighborsOf(startVertice);
+			for(const neighbor of neighbors){
+				this.#vertices.add(neighbor);
+				this.#connections.add({from: startVertice, to: neighbor})
+				if(!visited[neighbor])
+					this.#traverse(neighbor, visited);
+			}				
+		}
+		/** @type {Set<number>} */
+		#vertices = new Set();
+		/**
+		 * @readonly
+		 * @returns {Set<number>}
+		 */
+		get vertices() {
+			return Object.freeze(this.#vertices);
+		}
+		/**@type {Set<EdgeNotation>} */
+		#connections = new Set();
+		/**
+		 * @readonly
+		 * @returns {Set<EdgeNotation>}
+		 */
+		get connections() {
+			return Object.freeze(this.#connections);
+		}
+	};
+	//#endregion
+
 	/**
 	 * @param {unknown} source
 	 * @returns {Graph}
@@ -101,9 +185,11 @@ class Graph {
 	 * @returns {GraphNotation}
 	 */
 	export() {
+		const dfs = new Graph.DFS(this);
+		dfs.traverse();
 		return {
-			vertices: [],
-			connections: []
+			vertices: Array.from(this.vertices),
+			connections: Array.from(dfs.connections)
 		};
 	}
 	/** @type {Map<number, GraphVertice>} */
@@ -115,6 +201,8 @@ class Graph {
 	get vertices() {
 		return new Set(this.#vertices.keys());
 	}
+	/** @type {Map<GraphVertice, number>} */
+	#indices = new Map();
 	/**
 	 * @param {number} index
 	 * @returns {GraphVertice}
@@ -130,10 +218,7 @@ class Graph {
 	 * @returns {number}
 	 */
 	#getIndex(vertice) {
-		for (const [key, value] of this.#vertices) {
-			if (value === vertice) return key;
-		}
-		return NaN;
+		return this.#indices.get(vertice) ?? NaN;
 	}
 	/**
 	 * @param {number} index
@@ -141,7 +226,9 @@ class Graph {
 	 */
 	addVertice(index) {
 		if (this.vertices.has(index)) throw new EvalError(`Vertice of index ${index} already exists`);
-		this.#vertices.set(index, new Graph.Vertice());
+		const vertice = new Graph.Vertice();
+		this.#vertices.set(index, vertice);
+		this.#indices.set(vertice, index);
 	}
 	/**
 	 * @param {number} index
@@ -153,6 +240,7 @@ class Graph {
 			Graph.Vertice.disconnect(verticeSelected, neighbor);
 		}
 		this.#vertices.delete(index);
+		this.#indices.delete(verticeSelected);
 	}
 	/**
 	 * @param {number} from
@@ -183,6 +271,17 @@ class Graph {
 		} catch (error) {
 			throw new EvalError(`Connection between ${from} and ${to} doesn't exist`);
 		}
+	}
+	/**
+	 * @param {number} index
+	 * @returns {Set<number>}
+	 */
+	getNeighborsOf(index){
+		const vertice = this.#getVertice(index);
+		const neighborIndices = new Set();
+		for(const neighbor of vertice.neighbors)
+			neighborIndices.add(this.#getIndex(neighbor));
+		return neighborIndices;
 	}
 }
 //#endregion

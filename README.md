@@ -3,6 +3,11 @@
 ## Information
 
 ## Feed
+### 0.6.0 : Adaptive Game Engine 1.5.0 (01.05.2024)
+- Added Depth-First Search of graph with `Graph.DFS` class.
+- Reworked vertice indices in `Graph` class.
+- Completed `Graph.export` function.
+
 ### 0.5.0 : Adaptive Game Engine 1.5.0 (25.04.2024)
 - Fixed `Graph.#getVertice` function.
 - Code fragmentation improved.
