@@ -22,14 +22,14 @@ const colorForeground = await window.ensure(() => {
 });
 
 //#region Definition
-const inputVerticeTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#vertice-tool`));
+const inputVertexTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#vertex-tool`));
 const inputEdgeTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#edge-tool`));
 const buttonCaptureCanvas = await window.ensure(() => document.getElement(HTMLButtonElement, `button#capture-canvas`));
 //#endregion
 //#region Member entity
 /**
  * @typedef VirtualLinkEventInit
- * @property {VerticeMember} vertice
+ * @property {VertexMember} vertex
  * @property {EdgeMember} edge
  * 
  * @typedef {EventInit & VirtualLinkEventInit} LinkEventInit
@@ -42,17 +42,17 @@ class LinkEvent extends Event {
 	 */
 	constructor(type, dict) {
 		super(type, dict);
-		this.#vertice = dict.vertice;
+		this.#vertex = dict.vertex;
 		this.#edge = dict.edge;
 	}
-	/** @type {VerticeMember} */
-	#vertice;
+	/** @type {VertexMember} */
+	#vertex;
 	/**
 	 * @readonly
-	 * @returns {VerticeMember}
+	 * @returns {VertexMember}
 	 */
-	get vertice() {
-		return this.#vertice;
+	get vertex() {
+		return this.#vertex;
 	}
 	/** @type {EdgeMember} */
 	#edge;
@@ -103,17 +103,17 @@ class MemberEntity extends Entity {
 	}
 }
 //#endregion
-//#region Vertice member
+//#region Vertex member
 /**
- * @typedef {{}} VirtualVerticeMemberEventMap
+ * @typedef {{}} VirtualVertexMemberEventMap
  * 
- * @typedef {MemberEntityEventMap & VirtualVerticeMemberEventMap} VerticeMemberEventMap
+ * @typedef {MemberEntityEventMap & VirtualVertexMemberEventMap} VertexMemberEventMap
  */
 
-class VerticeMember extends MemberEntity {
+class VertexMember extends MemberEntity {
 	/** @type {number} */
 	static #counter = 0;
-	/** @type {Map<number, VerticeMember>} */
+	/** @type {Map<number, VertexMember>} */
 	static #members = new Map();
 	/** @type {number} */
 	static #diameter;
@@ -126,24 +126,24 @@ class VerticeMember extends MemberEntity {
 	}
 	/**
 	 * @param {Readonly<Point2D>} point 
-	 * @param {VerticeMember?} exception 
+	 * @param {VertexMember?} exception 
 	 * @returns {boolean}
 	 */
 	static #canPlaceAt(point, exception = null) {
-		for (const [, vertice] of VerticeMember.#members) {
-			if (vertice === exception) continue;
-			if (hypot(...point["-"](vertice.position)) < VerticeMember.#diameter) return false;
+		for (const [, vertex] of VertexMember.#members) {
+			if (vertex === exception) continue;
+			if (hypot(...point["-"](vertex.position)) < VertexMember.#diameter) return false;
 		}
 		return true;
 	}
 	/**
 	 * @todo Invalid logicial implementation. Do not use "isMesh" except implementation.
 	 * @param {Readonly<Point2D>} point 
-	 * @returns {VerticeMember?}
+	 * @returns {VertexMember?}
 	 */
 	static getMemberAt(point) {
-		for (const [, vertice] of VerticeMember.#members) {
-			if (vertice.isMesh(point)) return vertice;
+		for (const [, vertex] of VertexMember.#members) {
+			if (vertex.isMesh(point)) return vertex;
 		}
 		return null;
 	}
@@ -154,36 +154,36 @@ class VerticeMember extends MemberEntity {
 	 * @returns {void}
 	 */
 	static tryAttachAt(point) {
-		if (!VerticeMember.#canPlaceAt(point)) return;
-		VerticeMember.#locked = false;
-		const vertice = new VerticeMember();
-		VerticeMember.#locked = true;
-		progenitor.children.add(vertice);
-		vertice.position = point;
-		vertice.dispatchEvent(new Event(`attach`));
+		if (!VertexMember.#canPlaceAt(point)) return;
+		VertexMember.#locked = false;
+		const vertex = new VertexMember();
+		VertexMember.#locked = true;
+		progenitor.children.add(vertex);
+		vertex.position = point;
+		vertex.dispatchEvent(new Event(`attach`));
 	}
 	static {
-		VerticeMember.#diameter = min(canvas.width, canvas.height) / 32;
+		VertexMember.#diameter = min(canvas.width, canvas.height) / 32;
 		window.addEventListener(`resize`, (event) => {
-			VerticeMember.#diameter = min(canvas.width, canvas.height) / 32;
+			VertexMember.#diameter = min(canvas.width, canvas.height) / 32;
 		});
 	}
 	/**
 	 * @param {string} name 
 	 */
-	constructor(name = `Vertice member`) {
+	constructor(name = `Vertex member`) {
 		super(name);
-		if (VerticeMember.#locked) throw new TypeError(`Illegal constructor`);
+		if (VertexMember.#locked) throw new TypeError(`Illegal constructor`);
 
 		//#region Behavior
 		this.addEventListener(`attach`, (event) => {
-			this.#index = VerticeMember.#counter++;
-			VerticeMember.#members.set(this.#index, this);
-			graph.addVertice(this.#index);
+			this.#index = VertexMember.#counter++;
+			VertexMember.#members.set(this.#index, this);
+			graph.addVertex(this.#index);
 		});
 		this.addEventListener(`detach`, (event) => {
-			graph.removeVertice(this.#index);
-			VerticeMember.#members.delete(this.#index);
+			graph.removeVertex(this.#index);
+			VertexMember.#members.delete(this.#index);
 			this.#index = NaN;
 		});
 
@@ -199,18 +199,18 @@ class VerticeMember extends MemberEntity {
 			context.fillStyle = colorForeground.invert().toString(true);
 			const { position: position } = this;
 			context.beginPath();
-			context.arc(position.x, position.y, VerticeMember.#diameter / 2, 0, 2 * PI);
+			context.arc(position.x, position.y, VertexMember.#diameter / 2, 0, 2 * PI);
 			context.closePath();
 			context.fill();
 			context.restore();
 		});
 		//#endregion
-		//#region Vertice control
+		//#region Vertex control
 		this.addEventListener(`click`, (event) => {
-			if (!inputVerticeTool.checked) return;
+			if (!inputVertexTool.checked) return;
 			for (const edge of this.#connections) {
 				this.#connections.delete(edge);
-				edge.dispatchEvent(new LinkEvent(`unlink`, { vertice: this, edge: edge }));
+				edge.dispatchEvent(new LinkEvent(`unlink`, { vertex: this, edge: edge }));
 			}
 			progenitor.children.remove(this);
 			this.dispatchEvent(new Event(`detach`));
@@ -220,7 +220,7 @@ class VerticeMember extends MemberEntity {
 		 * @todo Fix position change. Fix engine for that.
 		 */
 		this.addEventListener(`dragbegin`, (event) => {
-			if (!inputVerticeTool.checked) return;
+			if (!inputVertexTool.checked) return;
 			this.#setMoveState(event.position);
 		});
 		//#endregion
@@ -259,28 +259,28 @@ class VerticeMember extends MemberEntity {
 	 * @returns {Readonly<Point2D>}
 	 */
 	get size() {
-		return Point2D.repeat(VerticeMember.#diameter);
+		return Point2D.repeat(VertexMember.#diameter);
 	}
 	/**
 	 * @param {Readonly<Point2D>} value 
 	 * @returns {void}
 	 */
 	set size(value) {
-		throw new TypeError(`Cannot set property size of #<VerticeMember> which has only a getter`);
+		throw new TypeError(`Cannot set property size of #<VertexMember> which has only a getter`);
 	}
 	/**
 	 * @param {Readonly<Point2D>} point 
 	 * @returns {boolean}
 	 */
 	isMesh(point) {
-		return (hypot(...point["-"](this.position)) <= VerticeMember.#diameter / 2);
+		return (hypot(...point["-"](this.position)) <= VertexMember.#diameter / 2);
 	}
 	/**
 	 * @param {Readonly<Point2D>} point 
 	 * @returns {boolean}
 	 */
 	#canMoveAt(point) {
-		return VerticeMember.#canPlaceAt(point, this);
+		return VertexMember.#canPlaceAt(point, this);
 	}
 	/**
 	 * @param {Readonly<Point2D>} position 
@@ -299,9 +299,9 @@ class VerticeMember extends MemberEntity {
 		}, { signal: controller.signal });
 	}
 	/**
-	 * @template {keyof VerticeMemberEventMap} K
+	 * @template {keyof VertexMemberEventMap} K
 	 * @param {K} type 
-	 * @param {(this: VerticeMember, ev: VerticeMemberEventMap[K]) => any} listener 
+	 * @param {(this: VertexMember, ev: VertexMemberEventMap[K]) => any} listener 
 	 * @param {boolean | AddEventListenerOptions} options
 	 * @returns {void}
 	 */
@@ -310,9 +310,9 @@ class VerticeMember extends MemberEntity {
 		return super.addEventListener(type, listener, options);
 	}
 	/**
-	 * @template {keyof VerticeMemberEventMap} K
+	 * @template {keyof VertexMemberEventMap} K
 	 * @param {K} type 
-	 * @param {(this: VerticeMember, ev: VerticeMemberEventMap[K]) => any} listener 
+	 * @param {(this: VertexMember, ev: VertexMemberEventMap[K]) => any} listener 
 	 * @param {boolean | EventListenerOptions} options
 	 * @returns {void}
 	 */
@@ -343,23 +343,23 @@ class EdgeMember extends MemberEntity {
 		}
 		/** @type {EdgeMember} */
 		#owner;
-		/** @type {VerticeMember?} */
+		/** @type {VertexMember?} */
 		#content = null;
 		/**
-		 * @returns {VerticeMember?}
+		 * @returns {VertexMember?}
 		 */
 		get content() {
 			return this.#content;
 		}
 		/**
-		 * @returns {VerticeMember}
+		 * @returns {VertexMember}
 		 */
 		get ensured() {
 			if (this.#content === null) throw new ReferenceError(`The content of ${this.#owner.name} is missing`);
 			return this.#content;
 		}
 		/**
-		 * @param {VerticeMember?} value 
+		 * @param {VertexMember?} value 
 		 * @returns {void}
 		 */
 		set content(value) {
@@ -371,22 +371,22 @@ class EdgeMember extends MemberEntity {
 	/** @type {boolean} */
 	static #locked = true;
 	/**
-	 * @param {VerticeMember} vertice 
+	 * @param {VertexMember} vertex 
 	 * @returns {Promise<void>}
 	 */
-	static async tryAttachFrom(vertice) {
+	static async tryAttachFrom(vertex) {
 		EdgeMember.#locked = false;
 		const edge = new EdgeMember();
 		EdgeMember.#locked = true;
 		progenitor.children.add(edge);
 
-		edge.#socketFrom.content = vertice;
-		vertice.dispatchEvent(new LinkEvent(`link`, { vertice: vertice, edge: edge }));
+		edge.#socketFrom.content = vertex;
+		vertex.dispatchEvent(new LinkEvent(`link`, { vertex: vertex, edge: edge }));
 
 		const controller = new AbortController();
-		const promise = (/** @type {Promise<VerticeMember?>} */ (new Promise((resolve) => {
-			vertice.addEventListener(`dragend`, (event) => {
-				resolve(VerticeMember.getMemberAt(event.position));
+		const promise = (/** @type {Promise<VertexMember?>} */ (new Promise((resolve) => {
+			vertex.addEventListener(`dragend`, (event) => {
+				resolve(VertexMember.getMemberAt(event.position));
 			}, { signal: controller.signal });
 		})));
 		promise.finally(() => {
@@ -397,11 +397,11 @@ class EdgeMember extends MemberEntity {
 		if (target === null) {
 			edge.#socketFrom.content = null;
 			progenitor.children.remove(edge);
-			vertice.dispatchEvent(new LinkEvent(`unlink`, { vertice: vertice, edge: edge }));
+			vertex.dispatchEvent(new LinkEvent(`unlink`, { vertex: vertex, edge: edge }));
 		} else {
 			edge.#socketTo.content = target;
 			edge.dispatchEvent(new Event(`attach`));
-			target.dispatchEvent(new LinkEvent(`link`, { vertice: target, edge: edge }));
+			target.dispatchEvent(new LinkEvent(`link`, { vertex: target, edge: edge }));
 		}
 	}
 	/** @type {number} */
@@ -446,11 +446,11 @@ class EdgeMember extends MemberEntity {
 
 		this.addEventListener(`unlink`, (event) => {
 			this.dispatchEvent(new Event(`detach`));
-			const [socketFrom, socketTo] = this.#orderSocketsBy(event.vertice);
+			const [socketFrom, socketTo] = this.#orderSocketsBy(event.vertex);
 			socketFrom.content = null;
 			const previous = socketTo.ensured;
 			socketTo.content = null;
-			previous.dispatchEvent(new LinkEvent(`unlink`, { vertice: previous, edge: this }));
+			previous.dispatchEvent(new LinkEvent(`unlink`, { vertex: previous, edge: this }));
 			progenitor.children.remove(this);
 		});
 
@@ -475,7 +475,7 @@ class EdgeMember extends MemberEntity {
 			for (const socket of [this.#socketFrom, this.#socketTo]) {
 				const previous = socket.ensured;
 				socket.content = null;
-				previous.dispatchEvent(new LinkEvent(`unlink`, { vertice: previous, edge: this }));
+				previous.dispatchEvent(new LinkEvent(`unlink`, { vertex: previous, edge: this }));
 			}
 			progenitor.children.remove(this);
 		});
@@ -486,17 +486,17 @@ class EdgeMember extends MemberEntity {
 	/** @type {EdgeMemberSocket} */
 	#socketTo = new EdgeMember.Socket(this);
 	/**
-	 * @param {VerticeMember} vertice 
+	 * @param {VertexMember} vertex 
 	 * @returns {[EdgeMemberSocket, EdgeMemberSocket]}
 	 */
-	#orderSocketsBy(vertice) {
+	#orderSocketsBy(vertex) {
 		const socketFrom = this.#socketFrom;
 		const socketTo = this.#socketTo;
-		if (socketFrom.content === vertice) {
+		if (socketFrom.content === vertex) {
 			return [socketFrom, socketTo];
-		} else if (socketTo.content === vertice) {
+		} else if (socketTo.content === vertex) {
 			return [socketTo, socketFrom];
-		} else throw new ReferenceError(`Unabel to find vertice '${vertice.name}' in sockets`);
+		} else throw new ReferenceError(`Unabel to find vertex '${vertex.name}' in sockets`);
 	}
 	/**
 	 * @returns {string}
@@ -534,19 +534,19 @@ class EdgeMember extends MemberEntity {
 	 * @returns {boolean}
 	 */
 	isMesh(point) {
-		const verticeFrom = this.#socketFrom.content;
-		const verticeTo = this.#socketTo.content;
-		if (verticeFrom === null || verticeTo === null) return false;
-		const pointFrom = verticeFrom.position;
-		const pointTo = verticeTo.position;
+		const vertexFrom = this.#socketFrom.content;
+		const vertexTo = this.#socketTo.content;
+		if (vertexFrom === null || vertexTo === null) return false;
+		const pointFrom = vertexFrom.position;
+		const pointTo = vertexTo.position;
 		const pointCenter1Mouse = point["-"](pointFrom);
 		const pointCenter1Center2 = pointTo["-"](pointFrom);
 		const distanceCenter1Mouse = hypot(...pointCenter1Mouse);
 		const distanceCenter1Center2 = hypot(...pointCenter1Center2);
 		return (
 			abs(pointCenter1Mouse.y - pointCenter1Mouse.x * pointCenter1Center2.y / pointCenter1Center2.x) < EdgeMember.#width / 2 &&
-			VerticeMember.diameter / 2 < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2 &&
-			VerticeMember.diameter / 2 < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2
+			VertexMember.diameter / 2 < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2 &&
+			VertexMember.diameter / 2 < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2
 		);
 	}
 }
@@ -554,8 +554,8 @@ class EdgeMember extends MemberEntity {
 //#region Canvas
 await window.load(Promise.fulfill(() => {
 	userInterface.addEventListener(`click`, (event) => {
-		if (!inputVerticeTool.checked) return;
-		VerticeMember.tryAttachAt(event.position);
+		if (!inputVertexTool.checked) return;
+		VertexMember.tryAttachAt(event.position);
 	});
 
 	buttonCaptureCanvas.addEventListener(`click`, async () => await window.ensure(() => {

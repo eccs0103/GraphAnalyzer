@@ -5,16 +5,16 @@
 ## Feed
 ### 0.6.0 : Adaptive Game Engine 1.5.0 (01.05.2024)
 - Added Depth-First Search of graph with `Graph.DFS` class.
-- Reworked vertice indices in `Graph` class.
+- Reworked vertex indices in `Graph` class.
 - Completed `Graph.export` function.
 
 ### 0.5.0 : Adaptive Game Engine 1.5.0 (25.04.2024)
-- Fixed `Graph.#getVertice` function.
+- Fixed `Graph.#getVertex` function.
 - Code fragmentation improved.
 - Enhanced structure of displayed elements.
 - Fixed edge error when deleting vertices.
 - View synchronized with models.
-- Vertice deletion speed increased.
+- Vertex deletion speed increased.
 - Edge cursor capture speed increased.
 - Improved error descriptions.
 - Loading stabilized.
@@ -29,8 +29,8 @@
 ### 0.4.10 : Adaptive Game Engine 1.5.0 (21.04.2024)
 *Unstable intermediate version*
 - Fixed graph edge control.
-- Optimized graph vertice connections.
-- Optimized graph vertice deletion.
+- Optimized graph vertex connections.
+- Optimized graph vertex deletion.
 - Fixed error when deleting vertices.
 - Added JSON import page.
 - Added data saving.
@@ -39,7 +39,7 @@
 - Fixed issue in `Graph.import` left from previous commit.
 
 ### 0.4.6 : Adaptive Game Engine 1.5.0 (21.04.2024)
-- Added `Vertice` class.
+- Added `Vertex` class.
 - Fixed `Graph.export` function.
 
 ### 0.3.5 : Adaptive Game Engine 1.5.0 (20.04.2024)
@@ -57,7 +57,7 @@
 
 ### 0.3.0 : Adaptive Game Engine 1.5.0 (13.04.2024)
 - Core updated.
-- Added `VerticeEntity` and `EdgeEntity`.
+- Added `VertexEntity` and `EdgeEntity`.
 - `link` and `unlink` events set for them.
 - Fixed collisions between vertices.
 
@@ -71,7 +71,7 @@
 - Add `test.json`.
 
 ### 0.1.2 : Adaptive Game Engine 1.3.4 (21.03.2024)
-- Fixed error with graph vertice movement.
+- Fixed error with graph vertex movement.
 - Fixed error with theme switching.
 - Improved appearance.
 - Added ability to save the canvas as an image on the device.

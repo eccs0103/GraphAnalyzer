@@ -69,7 +69,7 @@ div.toolkit {
 	left: var(--size-gap);
 }
 
-label[for="vertice-tool"] {
+label[for="vertex-tool"] {
 	inline-size: inherit;
 	block-size: inherit;
 }
