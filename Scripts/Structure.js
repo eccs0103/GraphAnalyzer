@@ -8,6 +8,146 @@ import { } from "./Modules/Palette.js";
 import { } from "./Modules/Storage.js";
 import { } from "./Modules/Time.js";
 
+//#region Stack
+/**
+ * @template T
+ */
+class Stack {
+	/**
+	 * @param  {T[]} items 
+	 */
+	constructor(...items) {
+		this.#array = items;
+	}
+	/** @type {T[]} */
+	#array;
+	/**
+	 * @param {T} item 
+	 * @returns {void}
+	 */
+	push(item) {
+		this.#array.push(item);
+	}
+	/**
+	 * @returns {T}
+	 */
+	peak() {
+		return this.#array.at(-1) ?? (() => {
+			throw new ReferenceError(`Stack is empty`);
+		})();
+	}
+	/**
+	 * @returns {T}
+	 */
+	pop() {
+		return this.#array.pop() ?? (() => {
+			throw new ReferenceError(`Stack is empty`);
+		})();
+	}
+	/**
+	 * @returns {T[]}
+	 */
+	clear() {
+		return this.#array.splice(0, this.#array.length);
+	}
+	/**
+	 * @readonly
+	 * @returns {number}
+	 */
+	get size() {
+		return this.#array.length;
+	}
+	/**
+	 * @returns {Generator<T, null>}
+	 */
+	*[Symbol.iterator]() {
+		for (const item of this.#array) {
+			yield item;
+		}
+		return null;
+	}
+}
+//#endregion
+//#region Dictionary
+/**
+ * @template K
+ * @template V
+ */
+class Dictionary {
+	/**
+	 * @param  {[NonNullable<K>, V][]} items 
+	 */
+	constructor(...items) {
+		this.#map = new Map(items);
+	}
+	/** @type {Map<NonNullable<K>, V>} */
+	#map;
+	/**
+	 * @param {NonNullable<K>} key
+	 * @returns {V}
+	 */
+	get(key) {
+		const value = this.#map.get(key);
+		if (value === undefined) throw new ReferenceError(`Value for key '${key}' is missing`);
+		return value;
+	}
+	/**
+	 * @param {NonNullable<K>} key
+	 * @returns {V?}
+	 */
+	request(key) {
+		const value = this.#map.get(key);
+		return (value === undefined ? null : value);
+	}
+	/**
+	 * @param {NonNullable<K>} key
+	 * @param {any} value
+	 * @returns {void}
+	 */
+	add(key, value) {
+		if (this.#map.has(key)) throw new EvalError(`Value for key '${key}' already exists`);
+		this.#map.set(key, value);
+	}
+	/**
+	 * @param {NonNullable<K>} key
+	 * @param {V} value
+	 * @returns {void}
+	 */
+	set(key, value) {
+		this.#map.set(key, value);
+	}
+	/**
+	 * @param {NonNullable<K>} key
+	 * @returns {boolean}
+	 */
+	has(key) {
+		return this.#map.has(key);
+	}
+	/**
+	 * @param {NonNullable<K>} key
+	 * @returns {void}
+	 */
+	delete(key) {
+		this.#map.delete(key);
+	}
+	/**
+	 * @readonly
+	 * @returns {number}
+	 */
+	get size() {
+		return this.#map.size;
+	}
+	/**
+	 * @returns {Generator<V, null>}
+	 */
+	*[Symbol.iterator]() {
+		for (const [, value] of this.#map) {
+			yield value;
+		}
+		return null;
+	}
+}
+//#endregion
 //#region Graph
 /**
 * @typedef EdgeNotation
@@ -50,11 +190,9 @@ class Graph {
 	 * @returns {GraphNotation}
 	 */
 	export() {
-		const dfs = new Graph.DFS(this);
-		dfs.traverse();
 		return {
-			vertices: Array.from(this.vertices),
-			connections: Array.from(dfs.connections)
+			vertices: [],
+			connections: []
 		};
 	}
 
@@ -110,93 +248,113 @@ class Graph {
 		}
 	};
 	//#endregion
+	//#region Edge
+	/**
+	 * @typedef {InstanceType<Graph.Edge>} GraphEdge
+	 */
+	static Edge = class GraphEdge {
+		/**
+		 * @param {GraphVertex} from 
+		 * @param {GraphVertex} to 
+		 */
+		constructor(from, to) {
+			this.#from = from;
+			this.#to = to;
+		}
+		/** @type {GraphVertex} */
+		#from;
+		/** @type {GraphVertex} */
+		#to;
+		/**
+		 * @param {GraphVertex} from 
+		 * @param {GraphVertex} to 
+		 * @returns {boolean}
+		 */
+		is(from, to) {
+			return (this.#from === from && this.#to === to);
+		}
+		/**
+		 * @todo Logic error! Remove after!
+		 * @param {Graph} graph 
+		 * @returns {string}
+		 */
+		stringify(graph) {
+			return `${graph.#getIndex(this.#from)}-${graph.#getIndex(this.#to)}`;
+		}
+	};
+	//#endregion
 	//#region DFS
 	/**
 	 * @typedef {InstanceType<Graph.DFS>} GraphDFS
 	 */
 	static DFS = class GraphDFS {
-		/** @type {Graph} */
-		#graph;
 		/**
-		 * @param {Graph} graph
+		 * @param {Graph} graph 
+		 * @returns {string[]}
 		 */
-		constructor(graph) {
-			this.#graph = graph;
+		static walkDepthFirst(graph) {
+			const dfs = new GraphDFS();
+			for (const [, vertex] of graph.#vertices) {
+				if (dfs.#visits.request(vertex) === null) {
+					dfs.#walkDepthFirst(vertex);
+				}
+				dfs.#paths.push(dfs.#stack.clear());
+			}
+			return dfs.#paths.filter(path => path.length > 0).map(path => path.map(edge => edge.stringify(graph)).join(` `));
 		}
-		/** 
+		/** @type {GraphEdge[][]} */
+		#paths = [];
+		/** @type {Stack<GraphEdge>} */
+		#stack = new Stack();
+		/** @type {number} */
+		#time = 0;
+		/** @type {Dictionary<GraphVertex, number>} */
+		#lowlinks = new Dictionary();
+		/** @type {Dictionary<GraphVertex, number>} */
+		#visits = new Dictionary();
+		/** @type {Dictionary<GraphVertex, GraphVertex>} */
+		#parent = new Dictionary();
+		/**
+		 * @param {GraphVertex} vertex 
 		 * @returns {void}
 		 */
-		traverse() {
-			// if (this.#graph.vertices.size === 0) return;
-			while (true) {
-				const unvisitedVertices = this.#getUnvisitedVertices();
-				if (unvisitedVertices.size === 0) break;
-				for (const startVertex of unvisitedVertices) {
-					this.traverseConnectedComponent(startVertex);
-					break;
+		#walkDepthFirst(vertex) {
+			++this.#time;
+			this.#lowlinks.set(vertex, this.#time);
+			this.#visits.set(vertex, this.#time);
+			let children = 0;
+
+			for (const neighbor of vertex.neighbors) {
+				if (this.#visits.request(neighbor) === null) {
+					++children;
+					this.#parent.set(neighbor, vertex);
+					this.#stack.push(new Graph.Edge(vertex, neighbor));
+
+					this.#walkDepthFirst(neighbor);
+
+					if (this.#lowlinks.get(vertex) > this.#lowlinks.get(neighbor)) {
+						this.#lowlinks.set(vertex, this.#lowlinks.get(neighbor));
+					}
+					if ((this.#visits.get(vertex) === 1 && children > 1) || (this.#visits.get(vertex) > 1 && this.#lowlinks.get(neighbor) >= this.#visits.get(vertex))) {
+						/** @type {GraphEdge[]} */
+						const path = [];
+						try {
+							while (!this.#stack.peak().is(vertex, neighbor)) {
+								path.push(this.#stack.pop());
+							}
+							path.push(this.#stack.pop());
+							this.#paths.push(path);
+						} catch (error) {
+							debugger;
+						}
+					}
+				} else if (neighbor !== this.#parent.request(vertex) && this.#visits.get(neighbor) < this.#visits.get(vertex)) {
+					if (this.#lowlinks.get(vertex) > this.#visits.get(neighbor)) {
+						this.#lowlinks.set(vertex, this.#visits.get(neighbor));
+					}
+					this.#stack.push(new Graph.Edge(vertex, neighbor));
 				}
 			}
-		}
-		/**
-		 * @param {number} startVertex
-		 * @returns {void}
-		 * @throws {RangeError}
-		 */
-		traverseConnectedComponent(startVertex) {
-			if (!this.#graph.vertices.has(startVertex)) throw new RangeError(`Vertex with index ${startVertex} doesn't exist`);
-			/** @type {Map<number, boolean>} */
-			const visited = new Map();
-			for (const index of this.#graph.vertices) {
-				visited.set(index, false);
-			}
-			this.#traverse(startVertex, visited);
-		}
-		/**
-		 * @returns {Set<number>}
-		 */
-		#getUnvisitedVertices() {
-			const unvisitedVertices = new Set(this.#graph.vertices);
-			for (const vertex of unvisitedVertices) {
-				if (this.#vertices.has(vertex)) {
-					unvisitedVertices.delete(vertex);
-				}
-			}
-			return unvisitedVertices;
-		}
-		/**
-		 * @param {number} startVertex
-		 * @param {Map<number, boolean>} visited
-		 * @returns {void}
-		 * @throws {TypeError}
-		 * @throws {RangeError}
-		 */
-		#traverse(startVertex, visited) {
-			visited.set(startVertex, true);
-			for (const neighbor of this.#graph.getNeighborsOf(startVertex)) {
-				this.#vertices.add(neighbor);
-				this.#connections.add({ from: startVertex, to: neighbor });
-				if (!visited.get(neighbor)) {
-					this.#traverse(neighbor, visited);
-				}
-			}
-		}
-		/** @type {Set<number>} */
-		#vertices = new Set();
-		/**
-		 * @readonly
-		 * @returns {Set<number>}
-		 */
-		get vertices() {
-			return Object.freeze(this.#vertices);
-		}
-		/**@type {Set<EdgeNotation>} */
-		#connections = new Set();
-		/**
-		 * @readonly
-		 * @returns {Set<EdgeNotation>}
-		 */
-		get connections() {
-			return Object.freeze(this.#connections);
 		}
 	};
 	//#endregion
