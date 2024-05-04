@@ -5,6 +5,7 @@
 ## Feed
 ### 0.6.5 : Adaptive Game Engine 1.5.0 (04.05.2024)
 - DFS fixed.
+- Core Updated.
 
 ### 0.6.0 : Adaptive Game Engine 1.5.0 (01.05.2024)
 - Added Depth-First Search of graph with `Graph.DFS` class.

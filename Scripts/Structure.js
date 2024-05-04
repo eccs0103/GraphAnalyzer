@@ -1,153 +1,13 @@
 "use strict";
 
 import { } from "./Modules/Executors.js";
-import { } from "./Modules/Extensions.js";
+import { Stack, StrictMap } from "./Modules/Extensions.js";
 import { } from "./Modules/Generators.js";
 import { } from "./Modules/Measures.js";
 import { } from "./Modules/Palette.js";
 import { } from "./Modules/Storage.js";
 import { } from "./Modules/Time.js";
 
-//#region Stack
-/**
- * @template T
- */
-class Stack {
-	/**
-	 * @param  {T[]} items 
-	 */
-	constructor(...items) {
-		this.#array = items;
-	}
-	/** @type {T[]} */
-	#array;
-	/**
-	 * @param {T} item 
-	 * @returns {void}
-	 */
-	push(item) {
-		this.#array.push(item);
-	}
-	/**
-	 * @returns {T}
-	 */
-	peak() {
-		return this.#array.at(-1) ?? (() => {
-			throw new ReferenceError(`Stack is empty`);
-		})();
-	}
-	/**
-	 * @returns {T}
-	 */
-	pop() {
-		return this.#array.pop() ?? (() => {
-			throw new ReferenceError(`Stack is empty`);
-		})();
-	}
-	/**
-	 * @returns {T[]}
-	 */
-	clear() {
-		return this.#array.splice(0, this.#array.length);
-	}
-	/**
-	 * @readonly
-	 * @returns {number}
-	 */
-	get size() {
-		return this.#array.length;
-	}
-	/**
-	 * @returns {Generator<T, null>}
-	 */
-	*[Symbol.iterator]() {
-		for (const item of this.#array) {
-			yield item;
-		}
-		return null;
-	}
-}
-//#endregion
-//#region Dictionary
-/**
- * @template K
- * @template V
- */
-class Dictionary {
-	/**
-	 * @param  {[NonNullable<K>, V][]} items 
-	 */
-	constructor(...items) {
-		this.#map = new Map(items);
-	}
-	/** @type {Map<NonNullable<K>, V>} */
-	#map;
-	/**
-	 * @param {NonNullable<K>} key
-	 * @returns {V}
-	 */
-	get(key) {
-		const value = this.#map.get(key);
-		if (value === undefined) throw new ReferenceError(`Value for key '${key}' is missing`);
-		return value;
-	}
-	/**
-	 * @param {NonNullable<K>} key
-	 * @returns {V?}
-	 */
-	request(key) {
-		const value = this.#map.get(key);
-		return (value === undefined ? null : value);
-	}
-	/**
-	 * @param {NonNullable<K>} key
-	 * @param {any} value
-	 * @returns {void}
-	 */
-	add(key, value) {
-		if (this.#map.has(key)) throw new EvalError(`Value for key '${key}' already exists`);
-		this.#map.set(key, value);
-	}
-	/**
-	 * @param {NonNullable<K>} key
-	 * @param {V} value
-	 * @returns {void}
-	 */
-	set(key, value) {
-		this.#map.set(key, value);
-	}
-	/**
-	 * @param {NonNullable<K>} key
-	 * @returns {boolean}
-	 */
-	has(key) {
-		return this.#map.has(key);
-	}
-	/**
-	 * @param {NonNullable<K>} key
-	 * @returns {void}
-	 */
-	delete(key) {
-		this.#map.delete(key);
-	}
-	/**
-	 * @readonly
-	 * @returns {number}
-	 */
-	get size() {
-		return this.#map.size;
-	}
-	/**
-	 * @returns {Generator<V, null>}
-	 */
-	*[Symbol.iterator]() {
-		for (const [, value] of this.#map) {
-			yield value;
-		}
-		return null;
-	}
-}
-//#endregion
 //#region Graph
 /**
 * @typedef EdgeNotation
@@ -295,7 +155,7 @@ class Graph {
 		static walkDepthFirst(graph) {
 			const dfs = new GraphDFS();
 			for (const [, vertex] of graph.#vertices) {
-				if (dfs.#visits.request(vertex) === null) {
+				if (dfs.#visits.ask(vertex) === null) {
 					dfs.#walkDepthFirst(vertex);
 				}
 				dfs.#paths.push(dfs.#stack.clear());
@@ -308,12 +168,12 @@ class Graph {
 		#stack = new Stack();
 		/** @type {number} */
 		#time = 0;
-		/** @type {Dictionary<GraphVertex, number>} */
-		#lowlinks = new Dictionary();
-		/** @type {Dictionary<GraphVertex, number>} */
-		#visits = new Dictionary();
-		/** @type {Dictionary<GraphVertex, GraphVertex>} */
-		#parent = new Dictionary();
+		/** @type {StrictMap<GraphVertex, number>} */
+		#lowlinks = new StrictMap();
+		/** @type {StrictMap<GraphVertex, number>} */
+		#visits = new StrictMap();
+		/** @type {StrictMap<GraphVertex, GraphVertex>} */
+		#parent = new StrictMap();
 		/**
 		 * @param {GraphVertex} vertex 
 		 * @returns {void}
@@ -325,7 +185,7 @@ class Graph {
 			let children = 0;
 
 			for (const neighbor of vertex.neighbors) {
-				if (this.#visits.request(neighbor) === null) {
+				if (this.#visits.ask(neighbor) === null) {
 					++children;
 					this.#parent.set(neighbor, vertex);
 					this.#stack.push(new Graph.Edge(vertex, neighbor));
@@ -339,7 +199,7 @@ class Graph {
 						/** @type {GraphEdge[]} */
 						const path = [];
 						try {
-							while (!this.#stack.peak().is(vertex, neighbor)) {
+							while (!this.#stack.peek.is(vertex, neighbor)) {
 								path.push(this.#stack.pop());
 							}
 							path.push(this.#stack.pop());
@@ -348,7 +208,7 @@ class Graph {
 							debugger;
 						}
 					}
-				} else if (neighbor !== this.#parent.request(vertex) && this.#visits.get(neighbor) < this.#visits.get(vertex)) {
+				} else if (neighbor !== this.#parent.ask(vertex) && this.#visits.get(neighbor) < this.#visits.get(vertex)) {
 					if (this.#lowlinks.get(vertex) > this.#visits.get(neighbor)) {
 						this.#lowlinks.set(vertex, this.#visits.get(neighbor));
 					}
