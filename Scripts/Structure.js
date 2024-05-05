@@ -21,6 +21,18 @@ import { } from "./Modules/Time.js";
  * @property {EdgeNotation[]} connections
  */
 
+/**
+ * @typedef {InstanceType<Graph.Vertex>} GraphVertex
+ */
+
+/**
+ * @typedef {[number, number]} GraphEdge
+ */
+
+/**
+ * @typedef {InstanceType<Graph.DFS>} GraphDFS
+ */
+
 class Graph {
 	/**
 	 * @param {unknown} source
@@ -57,9 +69,6 @@ class Graph {
 	}
 
 	//#region Vertex
-	/**
-	 * @typedef {InstanceType<Graph.Vertex>} GraphVertex
-	 */
 	static Vertex = class GraphVertex {
 		/**
 		 * @param {GraphVertex} vertex1 
@@ -108,32 +117,35 @@ class Graph {
 		}
 	};
 	//#endregion
-
 	//#region DFS
-	/**
-	 * @typedef {InstanceType<Graph.DFS>} GraphDFS
-	 */
 	static DFS = class GraphDFS {
 		/**
 		 * @param {Graph} graph 
 		 * @returns {Graph[]}
 		 */
 		static walkDepthFirst(graph) {
-			const dfs = new GraphDFS();
-			dfs.#graph = graph;
+			const dfs = new GraphDFS(graph);
 			for (const vertex of graph.vertices) {
 				if (dfs.#visits.ask(vertex) === null) {
 					dfs.#walkDepthFirst(vertex);
 				}
 				dfs.#paths.push(dfs.#stack.clear());
 			}
-			return dfs.#paths.filter(path => path.length > 0).map(path => dfs.#graph.getConnectedComponent(new Set(path.flat())));
+			return dfs.#paths
+				.filter(path => path.length > 0)
+				.map(path => dfs.#graph.getConnectedComponent(new Set(path.flat())));
+		}
+		/**
+		 * @param {Graph} graph 
+		 */
+		constructor(graph) {
+			this.#graph = graph;
 		}
 		/** @type {Graph} */
 		#graph;
-		/** @type {number[][][]} */
+		/** @type {GraphEdge[][]} */
 		#paths = [];
-		/** @type {Stack<number[]>} */
+		/** @type {Stack<GraphEdge>} */
 		#stack = new Stack();
 		/** @type {number} */
 		#time = 0;
@@ -157,7 +169,7 @@ class Graph {
 				if (this.#visits.ask(neighbor) === null) {
 					++children;
 					this.#parent.set(neighbor, vertex);
-					this.#stack.push(this.#getEdge(vertex, neighbor));
+					this.#stack.push([vertex, neighbor]);
 
 					this.#walkDepthFirst(neighbor);
 
@@ -165,34 +177,22 @@ class Graph {
 						this.#lowlinks.set(vertex, this.#lowlinks.get(neighbor));
 					}
 					if ((this.#visits.get(vertex) === 1 && children > 1) || (this.#visits.get(vertex) > 1 && this.#lowlinks.get(neighbor) >= this.#visits.get(vertex))) {
-						/** @type {number[][]} */
+						/** @type {GraphEdge[]} */
 						const path = [];
 						while (true) {
-							const peekEdge = this.#stack.peek;
-							if (peekEdge[0] === vertex && peekEdge[1] === neighbor) break;
+							const edge = this.#stack.peek;
 							path.push(this.#stack.pop());
+							if (edge[0] === vertex && edge[1] === neighbor) break;
 						}
-						path.push(this.#stack.pop());
 						this.#paths.push(path);
 					}
 				} else if (neighbor !== this.#parent.ask(vertex) && this.#visits.get(neighbor) < this.#visits.get(vertex)) {
 					if (this.#lowlinks.get(vertex) > this.#visits.get(neighbor)) {
 						this.#lowlinks.set(vertex, this.#visits.get(neighbor));
 					}
-					this.#stack.push(this.#getEdge(vertex, neighbor));
+					this.#stack.push([vertex, neighbor]);
 				}
 			}
-		}
-		/**
-		 * @param {number} from
-		 * @param {number} to
-		 * @returns {number[]}
-		 */
-		#getEdge(from, to) {
-			const edge = [];
-			edge.push(from);
-			edge.push(to);
-			return edge;
 		}
 	};
 	//#endregion
@@ -310,11 +310,11 @@ class Graph {
 	getConnectedComponent(vertices) {
 		const component = new Graph();
 		const verticeArr = Array.from(vertices);
-		for(let i = 0; i < verticeArr.length; i++){
-			if(i === 0) component.addVertex(verticeArr[i]);
-			for(let j = i+1; j < verticeArr.length; j++){
-				if(i === 0) component.addVertex(verticeArr[j]);
-				if(this.getNeighborsOf(verticeArr[i]).has(verticeArr[j])) component.addEdge(verticeArr[i], verticeArr[j]);		
+		for (let i = 0; i < verticeArr.length; i++) {
+			if (i === 0) component.addVertex(verticeArr[i]);
+			for (let j = i + 1; j < verticeArr.length; j++) {
+				if (i === 0) component.addVertex(verticeArr[j]);
+				if (this.getNeighborsOf(verticeArr[i]).has(verticeArr[j])) component.addEdge(verticeArr[i], verticeArr[j]);
 			}
 		}
 		return component;
