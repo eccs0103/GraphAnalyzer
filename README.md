@@ -3,6 +3,11 @@
 ## Information
 
 ## Feed
+### 0.7.0 : Adaptive Game Engine 1.5.0 (05.05.2024)
+- Reworked some features from the previos commit.
+- Added simple dfs traversal.
+- Implemented `Graph.export` function.
+
 ### 0.6.8 : Adaptive Game Engine 1.5.0 (05.05.2024)
 - Reworked DFS.
 - Reworked Graph Edges.

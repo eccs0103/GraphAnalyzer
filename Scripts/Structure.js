@@ -26,7 +26,7 @@ import { } from "./Modules/Time.js";
  */
 
 /**
- * @typedef {[number, number]} GraphEdge
+ * @typedef {[GraphVertex, GraphVertex]} GraphEdge
  */
 
 /**
@@ -62,9 +62,11 @@ class Graph {
 	 * @returns {GraphNotation}
 	 */
 	export() {
+		/** @type {EdgeNotation[]}*/
+		const connections = Graph.DFS.walkDepthFirst(this).map(edge => {return {from: edge[0], to: edge[1]}});
 		return {
-			vertices: [],
-			connections: []
+			vertices: Array.from(this.vertices),
+			connections: connections
 		};
 	}
 
@@ -123,55 +125,68 @@ class Graph {
 		 * @param {Graph} graph 
 		 * @returns {Graph[]}
 		 */
-		static walkDepthFirst(graph) {
-			const dfs = new GraphDFS(graph);
-			for (const vertex of graph.vertices) {
+		static getBiconnectedComponents(graph) {
+			const dfs = new GraphDFS();
+			for (const [,vertex] of graph.#vertices) {
 				if (dfs.#visits.ask(vertex) === null) {
-					dfs.#walkDepthFirst(vertex);
+					dfs.#walkDepthFirstExtended(vertex);
 				}
 				dfs.#paths.push(dfs.#stack.clear());
 			}
 			return dfs.#paths
 				.filter(path => path.length > 0)
-				.map(path => dfs.#graph.getConnectedComponent(new Set(path.flat())));
+				.map(path => graph.getMaxSubgraph(
+					new Set(path
+						.flat()
+						.map(vertex => graph.#getIndex(vertex))
+					)
+				));
+		}
+		/**
+		 * @param {Graph} graph
+		 * @returns {[Number, number][]}
+		 */
+		static walkDepthFirst(graph){
+			const dfs = new GraphDFS();
+			for (const [,vertex] of graph.#vertices) {
+				if (dfs.#visits.ask(vertex) === null) {
+					dfs.#walkDepthFirst(vertex);
+				}
+			}
+			return dfs.#stack.clear().map(edge => [graph.#getIndex(edge[0]), graph.#getIndex(edge[1])]);
 		}
 		/**
 		 * @param {Graph} graph 
 		 */
-		constructor(graph) {
-			this.#graph = graph;
-		}
-		/** @type {Graph} */
-		#graph;
 		/** @type {GraphEdge[][]} */
 		#paths = [];
 		/** @type {Stack<GraphEdge>} */
 		#stack = new Stack();
 		/** @type {number} */
 		#time = 0;
-		/** @type {StrictMap<number, number>} */
+		/** @type {StrictMap<GraphVertex, number>} */
 		#lowlinks = new StrictMap();
-		/** @type {StrictMap<number, number>} */
+		/** @type {StrictMap<GraphVertex, number>} */
 		#visits = new StrictMap();
-		/** @type {StrictMap<number, number>} */
+		/** @type {StrictMap<GraphVertex, GraphVertex>} */
 		#parent = new StrictMap();
 		/**
-		 * @param {number} vertex 
+		 * @param {GraphVertex} vertex 
 		 * @returns {void}
 		 */
-		#walkDepthFirst(vertex) {
+		#walkDepthFirstExtended(vertex) {
 			++this.#time;
 			this.#lowlinks.set(vertex, this.#time);
 			this.#visits.set(vertex, this.#time);
 			let children = 0;
 
-			for (const neighbor of this.#graph.getNeighborsOf(vertex)) {
+			for (const neighbor of vertex.neighbors) {
 				if (this.#visits.ask(neighbor) === null) {
 					++children;
 					this.#parent.set(neighbor, vertex);
 					this.#stack.push([vertex, neighbor]);
 
-					this.#walkDepthFirst(neighbor);
+					this.#walkDepthFirstExtended(neighbor);
 
 					if (this.#lowlinks.get(vertex) > this.#lowlinks.get(neighbor)) {
 						this.#lowlinks.set(vertex, this.#lowlinks.get(neighbor));
@@ -190,6 +205,26 @@ class Graph {
 					if (this.#lowlinks.get(vertex) > this.#visits.get(neighbor)) {
 						this.#lowlinks.set(vertex, this.#visits.get(neighbor));
 					}
+					this.#stack.push([vertex, neighbor]);
+				}
+			}
+		}
+		/**
+		 * @param {GraphVertex} vertex 
+		 * @returns {void}
+		 */
+		#walkDepthFirst(vertex) {
+			++this.#time;
+			this.#visits.set(vertex, this.#time);
+			let children = 0;
+
+			for (const neighbor of vertex.neighbors) {
+				if (this.#visits.ask(neighbor) === null) {
+					++children;
+					this.#parent.set(neighbor, vertex);
+					this.#stack.push([vertex, neighbor]);
+					this.#walkDepthFirst(neighbor);
+				} else if (neighbor !== this.#parent.ask(vertex) && this.#visits.get(neighbor) < this.#visits.get(vertex)) {
 					this.#stack.push([vertex, neighbor]);
 				}
 			}
@@ -246,12 +281,12 @@ class Graph {
 	 * @throws {EvalError}
 	 */
 	removeVertex(index) {
-		const verticeSelected = this.#getVertex(index);
-		for (const neighbor of verticeSelected.neighbors) {
-			Graph.Vertex.disconnect(verticeSelected, neighbor);
+		const vertexSelected = this.#getVertex(index);
+		for (const neighbor of vertexSelected.neighbors) {
+			Graph.Vertex.disconnect(vertexSelected, neighbor);
 		}
 		this.#vertices.delete(index);
-		this.#indices.delete(verticeSelected);
+		this.#indices.delete(vertexSelected);
 	}
 	/**
 	 * @param {number} from
@@ -290,31 +325,17 @@ class Graph {
 		}
 	}
 	/**
-	 * @param {number} index
-	 * @returns {Set<number>}
-	 * @throws {TypeError}
-	 * @throws {RangeError}
-	 */
-	getNeighborsOf(index) {
-		/** @type {Set<number>} */
-		const neighborIndices = new Set();
-		for (const neighbor of this.#getVertex(index).neighbors) {
-			neighborIndices.add(this.#getIndex(neighbor));
-		}
-		return neighborIndices;
-	}
-	/**
 	 * @param {Set<number>} vertices
 	 * @returns {Graph}
 	 */
-	getConnectedComponent(vertices) {
+	getMaxSubgraph(vertices) {
 		const component = new Graph();
 		const verticeArr = Array.from(vertices);
 		for (let i = 0; i < verticeArr.length; i++) {
 			if (i === 0) component.addVertex(verticeArr[i]);
 			for (let j = i + 1; j < verticeArr.length; j++) {
 				if (i === 0) component.addVertex(verticeArr[j]);
-				if (this.getNeighborsOf(verticeArr[i]).has(verticeArr[j])) component.addEdge(verticeArr[i], verticeArr[j]);
+				if (this.#getVertex(verticeArr[i]).isNeighbor(this.#getVertex(verticeArr[j]))) component.addEdge(verticeArr[i], verticeArr[j]);
 			}
 		}
 		return component;
@@ -370,3 +391,4 @@ class Memory {
 //#endregion
 
 export { Graph, Memory };
+

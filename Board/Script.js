@@ -559,11 +559,12 @@ await window.load(Promise.fulfill(() => {
 	});
 
 	buttonCaptureCanvas.addEventListener(`click`, async () => await window.ensure(() => {
-		console.log(Graph.DFS.walkDepthFirst(graph));
+		console.log(Graph.DFS.getBiconnectedComponents(graph));
 		// canvas.toBlob((blob) => {
 		// 	if (blob === null) throw new ReferenceError(`Unable to initialize canvas for capture`);
 		// 	navigator.download(new File([blob], `${Date.now()}.png`));
 		// });
 	}, false));
 }), 200, 1000);
+Reflect.set(window, `graph`, graph);
 //#endregion
