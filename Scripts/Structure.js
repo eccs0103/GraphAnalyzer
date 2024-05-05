@@ -108,41 +108,7 @@ class Graph {
 		}
 	};
 	//#endregion
-	//#region Edge
-	/**
-	 * @typedef {InstanceType<Graph.Edge>} GraphEdge
-	 */
-	static Edge = class GraphEdge {
-		/**
-		 * @param {GraphVertex} from 
-		 * @param {GraphVertex} to 
-		 */
-		constructor(from, to) {
-			this.#from = from;
-			this.#to = to;
-		}
-		/** @type {GraphVertex} */
-		#from;
-		/** @type {GraphVertex} */
-		#to;
-		/**
-		 * @param {GraphVertex} from 
-		 * @param {GraphVertex} to 
-		 * @returns {boolean}
-		 */
-		is(from, to) {
-			return (this.#from === from && this.#to === to);
-		}
-		/**
-		 * @todo Logic error! Remove after!
-		 * @param {Graph} graph 
-		 * @returns {string}
-		 */
-		stringify(graph) {
-			return `${graph.#getIndex(this.#from)}-${graph.#getIndex(this.#to)}`;
-		}
-	};
-	//#endregion
+
 	//#region DFS
 	/**
 	 * @typedef {InstanceType<Graph.DFS>} GraphDFS
@@ -150,32 +116,35 @@ class Graph {
 	static DFS = class GraphDFS {
 		/**
 		 * @param {Graph} graph 
-		 * @returns {string[]}
+		 * @returns {Graph[]}
 		 */
 		static walkDepthFirst(graph) {
 			const dfs = new GraphDFS();
-			for (const [, vertex] of graph.#vertices) {
+			dfs.#graph = graph;
+			for (const vertex of graph.vertices) {
 				if (dfs.#visits.ask(vertex) === null) {
 					dfs.#walkDepthFirst(vertex);
 				}
 				dfs.#paths.push(dfs.#stack.clear());
 			}
-			return dfs.#paths.filter(path => path.length > 0).map(path => path.map(edge => edge.stringify(graph)).join(` `));
+			return dfs.#paths.filter(path => path.length > 0).map(path => dfs.#graph.getConnectedComponent(new Set(path.flat())));
 		}
-		/** @type {GraphEdge[][]} */
+		/** @type {Graph} */
+		#graph;
+		/** @type {number[][][]} */
 		#paths = [];
-		/** @type {Stack<GraphEdge>} */
+		/** @type {Stack<number[]>} */
 		#stack = new Stack();
 		/** @type {number} */
 		#time = 0;
-		/** @type {StrictMap<GraphVertex, number>} */
+		/** @type {StrictMap<number, number>} */
 		#lowlinks = new StrictMap();
-		/** @type {StrictMap<GraphVertex, number>} */
+		/** @type {StrictMap<number, number>} */
 		#visits = new StrictMap();
-		/** @type {StrictMap<GraphVertex, GraphVertex>} */
+		/** @type {StrictMap<number, number>} */
 		#parent = new StrictMap();
 		/**
-		 * @param {GraphVertex} vertex 
+		 * @param {number} vertex 
 		 * @returns {void}
 		 */
 		#walkDepthFirst(vertex) {
@@ -184,11 +153,11 @@ class Graph {
 			this.#visits.set(vertex, this.#time);
 			let children = 0;
 
-			for (const neighbor of vertex.neighbors) {
+			for (const neighbor of this.#graph.getNeighborsOf(vertex)) {
 				if (this.#visits.ask(neighbor) === null) {
 					++children;
 					this.#parent.set(neighbor, vertex);
-					this.#stack.push(new Graph.Edge(vertex, neighbor));
+					this.#stack.push(this.#getEdge(vertex, neighbor));
 
 					this.#walkDepthFirst(neighbor);
 
@@ -196,31 +165,40 @@ class Graph {
 						this.#lowlinks.set(vertex, this.#lowlinks.get(neighbor));
 					}
 					if ((this.#visits.get(vertex) === 1 && children > 1) || (this.#visits.get(vertex) > 1 && this.#lowlinks.get(neighbor) >= this.#visits.get(vertex))) {
-						/** @type {GraphEdge[]} */
+						/** @type {number[][]} */
 						const path = [];
-						try {
-							while (!this.#stack.peek.is(vertex, neighbor)) {
-								path.push(this.#stack.pop());
-							}
+						while (true) {
+							const peekEdge = this.#stack.peek;
+							if (peekEdge[0] === vertex && peekEdge[1] === neighbor) break;
 							path.push(this.#stack.pop());
-							this.#paths.push(path);
-						} catch (error) {
-							debugger;
 						}
+						path.push(this.#stack.pop());
+						this.#paths.push(path);
 					}
 				} else if (neighbor !== this.#parent.ask(vertex) && this.#visits.get(neighbor) < this.#visits.get(vertex)) {
 					if (this.#lowlinks.get(vertex) > this.#visits.get(neighbor)) {
 						this.#lowlinks.set(vertex, this.#visits.get(neighbor));
 					}
-					this.#stack.push(new Graph.Edge(vertex, neighbor));
+					this.#stack.push(this.#getEdge(vertex, neighbor));
 				}
 			}
+		}
+		/**
+		 * @param {number} from
+		 * @param {number} to
+		 * @returns {number[]}
+		 */
+		#getEdge(from, to) {
+			const edge = [];
+			edge.push(from);
+			edge.push(to);
+			return edge;
 		}
 	};
 	//#endregion
 
-	/** @type {Map<number, GraphVertex>} */
-	#vertices = new Map();
+	/** @type {StrictMap<number, GraphVertex>} */
+	#vertices = new StrictMap();
 	/**
 	 * @readonly
 	 * @returns {Set<number>}
@@ -228,8 +206,8 @@ class Graph {
 	get vertices() {
 		return new Set(this.#vertices.keys());
 	}
-	/** @type {Map<GraphVertex, number>} */
-	#indices = new Map();
+	/** @type {StrictMap<GraphVertex, number>} */
+	#indices = new StrictMap();
 	/**
 	 * @param {number} index
 	 * @returns {GraphVertex}
@@ -238,7 +216,7 @@ class Graph {
 	 */
 	#getVertex(index) {
 		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
-		return this.#vertices.get(index) ?? (() => {
+		return this.#vertices.ask(index) ?? (() => {
 			throw new RangeError(`Vertex with index ${index} doesn't exist`);
 		})();
 	}
@@ -324,6 +302,22 @@ class Graph {
 			neighborIndices.add(this.#getIndex(neighbor));
 		}
 		return neighborIndices;
+	}
+	/**
+	 * @param {Set<number>} vertices
+	 * @returns {Graph}
+	 */
+	getConnectedComponent(vertices) {
+		const component = new Graph();
+		const verticeArr = Array.from(vertices);
+		for(let i = 0; i < verticeArr.length; i++){
+			if(i === 0) component.addVertex(verticeArr[i]);
+			for(let j = i+1; j < verticeArr.length; j++){
+				if(i === 0) component.addVertex(verticeArr[j]);
+				if(this.getNeighborsOf(verticeArr[i]).has(verticeArr[j])) component.addEdge(verticeArr[i], verticeArr[j]);		
+			}
+		}
+		return component;
 	}
 }
 //#endregion

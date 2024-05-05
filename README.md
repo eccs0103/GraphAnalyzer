@@ -3,6 +3,11 @@
 ## Information
 
 ## Feed
+### 0.6.8 : Adaptive Game Engine 1.5.0 (05.05.2024)
+- Reworked DFS.
+- Reworked Graph Edges.
+- Added `Graph.getConnectedComponent` function.
+
 ### 0.6.5 : Adaptive Game Engine 1.5.0 (04.05.2024)
 - DFS fixed.
 - Core Updated.
