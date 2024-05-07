@@ -3,6 +3,15 @@
 ## Information
 
 ## Feed
+### 1.0.0 : Adaptive Game Engine 1.5.0 (07.05.2024)
+*First completed version.*
+- Now, when taking canvas captures, a background is added.
+- Canvas capture is available only after program launch.
+- Editing is disabled upon program execution.
+- Improved design and rendering of graph edges.
+- Added loading in transitions.
+- Initial JSON model modified.
+
 ### 0.7.1 : Adaptive Game Engine 1.5.0 (07.05.2024)
 - Created and wrote  `graph1.json`.
 - Created and wrote  `graph2.json`.
