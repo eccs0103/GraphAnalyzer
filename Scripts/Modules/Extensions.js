@@ -384,6 +384,62 @@ class Queue {
 	}
 }
 //#endregion
+//#region Data pair
+/**
+ * @template K
+ * @template V
+ */
+class DataPair {
+	/**
+	 * @template K
+	 * @template V
+	 * @param {[NonNullable<K>, V]} source 
+	 * @returns {DataPair<K, V>}
+	 */
+	static fromArray(source) {
+		const [key, value] = source;
+		return new DataPair(key, value);
+	}
+	/**
+	* @returns {[NonNullable<K>, V]}
+	*/
+	toArray() {
+		return [this.#key, this.#value];
+	}
+	/**
+	 * @param {NonNullable<K>} key 
+	 * @param {V} value 
+	 */
+	constructor(key, value) {
+		this.#key = key;
+		this.#value = value;
+	}
+	/** @type {NonNullable<K>} */
+	#key;
+	/**
+	 * @readonly
+	 * @returns {NonNullable<K>}
+	 */
+	get key() {
+		return this.#key;
+	}
+	/** @type {V} */
+	#value;
+	/**
+	 * @returns {V}
+	 */
+	get value() {
+		return this.#value;
+	}
+	/**
+	 * @param {V} value 
+	 * @returns {void}
+	 */
+	set value(value) {
+		this.#value = value;
+	}
+}
+//#endregion
 //#region Strict map
 /**
  * Represents a strict map data structure.
@@ -1175,4 +1231,4 @@ class Application {
 // }
 //#endregion
 
-export { Stack, Queue, StrictMap };
+export { Stack, Queue, DataPair, StrictMap };

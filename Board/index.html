@@ -38,18 +38,22 @@
 	</div>
 	<div class="toolkit layer rounded">
 		<input id="vertex-tool" type="radio" name="toolkit" hidden checked>
-		<label for="vertex-tool" class="with-padding flex secondary-centered with-gap">
+		<label for="vertex-tool" role="combobox" class="with-padding flex secondary-centered with-gap">
 			<img src="../Resources/Icons/ScatterPlot.png" alt="Vertex" class="icon">
 		</label>
 		<input id="edge-tool" type="radio" name="toolkit" hidden>
-		<label for="edge-tool" class="with-padding flex secondary-centered with-gap">
+		<label for="edge-tool" role="combobox" class="with-padding flex secondary-centered with-gap">
 			<img src="../Resources/Icons/Timeline.png" alt="Edge" class="icon">
 		</label>
 	</div>
 	<div class="menu layer rounded">
-		<button id="capture-canvas" class="with-padding flex secondary-centered with-gap">
+		<button id="capture-canvas" class="with-padding highlight-background flex secondary-centered with-gap">
 			<img src="../Resources/Icons/Camera.png" alt="Capture" class="icon">
 		</button>
+		<input id="execute-program" type="checkbox" name="toolkit" hidden>
+		<label for="execute-program" role="checkbox" class="with-padding highlight-background flex secondary-centered with-gap">
+			<img src="../Resources/Icons/Play.png" alt="Execute" class="icon">
+		</label>
 	</div>
 	<script src="../Scripts/Templates/Loader.js"></script>
 	<script src="../Scripts/Templates/Popup.js"></script>

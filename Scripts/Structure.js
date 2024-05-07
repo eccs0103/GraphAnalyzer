@@ -63,7 +63,7 @@ class Graph {
 	 */
 	export() {
 		/** @type {EdgeNotation[]}*/
-		const connections = Graph.DFS.walkDepthFirst(this).map(edge => {return {from: edge[0], to: edge[1]}});
+		const connections = Graph.DFS.walkDepthFirst(this).map(edge => { return { from: edge[0], to: edge[1] }; });
 		return {
 			vertices: Array.from(this.vertices),
 			connections: connections
@@ -127,7 +127,7 @@ class Graph {
 		 */
 		static getBiconnectedComponents(graph) {
 			const dfs = new GraphDFS();
-			for (const [,vertex] of graph.#vertices) {
+			for (const [, vertex] of graph.#vertices) {
 				if (dfs.#visits.ask(vertex) === null) {
 					dfs.#walkDepthFirstExtended(vertex);
 				}
@@ -146,9 +146,9 @@ class Graph {
 		 * @param {Graph} graph
 		 * @returns {[Number, number][]}
 		 */
-		static walkDepthFirst(graph){
+		static walkDepthFirst(graph) {
 			const dfs = new GraphDFS();
-			for (const [,vertex] of graph.#vertices) {
+			for (const [, vertex] of graph.#vertices) {
 				if (dfs.#visits.ask(vertex) === null) {
 					dfs.#walkDepthFirst(vertex);
 				}
@@ -373,7 +373,7 @@ class Memory {
 		};
 	}
 	/** @type {string} */
-	#valueTextbox = `{\n\t"vertices": 15,\n\t"connections": [\n\t\t{\n\t\t\t"from": 1,\n\t\t\t"to": 2\n\t\t},\n\t\t{\n\t\t\t"from": 4,\n\t\t\t"to": 6\n\t\t},\n\t\t{\n\t\t\t"from": 8,\n\t\t\t"to": 12\n\t\t}\n\t]\n}`;
+	#valueTextbox = `{\n\t"vertices": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ],\n\t"connections": [\n\t\t{ "from": 1, "to": 2 },\n\t\t{ "from": 4, "to": 6 },\n\t\t{ "from": 8, "to": 12 }\n\t]\n}`;
 	/**
 	 * @returns {string}
 	 */

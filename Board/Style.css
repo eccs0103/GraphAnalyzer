@@ -90,3 +90,15 @@ div.menu {
 	bottom: var(--size-gap);
 	right: var(--size-gap);
 }
+
+div.menu:has(input#execute-program:not(:checked)) button#capture-canvas {
+	display: none;
+}
+
+input#execute-program:checked + label[for="execute-program"] {
+	background-color: var(--color-error);
+}
+
+input#execute-program:checked + label[for="execute-program"] img.icon[alt="Execute"] {
+	content: url(../Resources/Icons/Stop.png);
+}

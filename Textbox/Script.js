@@ -14,17 +14,22 @@ const managerTextbox = await ArchiveManager.construct(`${navigator.getDataPath()
 const textareaInputField = await window.ensure(() => document.getElement(HTMLTextAreaElement, `textarea#input-field`));
 const buttonExecuteProgram = await window.ensure(() => document.getElement(HTMLButtonElement, `button#execute-program`));
 //#endregion
-//#region Input
-textareaInputField.value = managerTextbox.data.valueTextbox;
-textareaInputField.addEventListener(`change`, (event) => {
-	managerTextbox.data.valueTextbox = textareaInputField.value;
-});
-//#endregion
-//#region Execution
-buttonExecuteProgram.addEventListener(`click`, async (event) => await window.ensure(() => {
-	const graph = Graph.import(JSON.parse(textareaInputField.value));
-	/**
-	 * @todo Graph calculating function
-	 */
-}));
+//#region Interface
+await window.load(Promise.fulfill(() => {
+	//#region Input
+	textareaInputField.value = managerTextbox.data.valueTextbox;
+	textareaInputField.addEventListener(`change`, (event) => {
+		managerTextbox.data.valueTextbox = textareaInputField.value;
+	});
+	//#endregion
+	//#region Execution
+	buttonExecuteProgram.addEventListener(`click`, async (event) => await window.ensure(async () => {
+		const graph = Graph.import(JSON.parse(textareaInputField.value));
+		const subgraphs = Graph.DFS.getBiconnectedComponents(graph);
+		const a = subgraphs.map(subgraph => JSON.stringify(subgraph.export(), undefined, `\t`));
+		console.log(...a);
+		// await window.alertAsync(a);
+	}));
+	//#endregion
+}), 200, 200);
 //#endregion

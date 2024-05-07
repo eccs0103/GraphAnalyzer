@@ -5,6 +5,7 @@
 import { Entity } from "../Scripts/Components/Entity.js";
 import { userInterface } from "../Scripts/Components/InterfaceItem.js";
 import { canvas, context, progenitor } from "../Scripts/Components/Node.js";
+import { DataPair, StrictMap } from "../Scripts/Modules/Extensions.js";
 import { Point2D } from "../Scripts/Modules/Measures.js";
 import { Color } from "../Scripts/Modules/Palette.js";
 import { Graph } from "../Scripts/Structure.js";
@@ -15,7 +16,7 @@ const { min, abs, hypot, PI } = Math;
  * @type {Graph}
  */
 const graph = new Graph();
-const colorForeground = await window.ensure(() => {
+const colorBackground = await window.ensure(() => {
 	return Color.tryParse(getComputedStyle(document.body).getPropertyValue(`--color-background`)) ?? (() => {
 		throw new EvalError(`Unable to parse background color`);
 	})();
@@ -24,6 +25,7 @@ const colorForeground = await window.ensure(() => {
 //#region Definition
 const inputVertexTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#vertex-tool`));
 const inputEdgeTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#edge-tool`));
+const inputExecuteProgram = await window.ensure(() => document.getElement(HTMLInputElement, `input#execute-program`));
 const buttonCaptureCanvas = await window.ensure(() => document.getElement(HTMLButtonElement, `button#capture-canvas`));
 //#endregion
 //#region Member entity
@@ -66,6 +68,10 @@ class LinkEvent extends Event {
 }
 
 /**
+ * @typedef {Map<Set<number>, Color>} Palette
+ */
+
+/**
  * @typedef VirtualMemberEntityEventMap
  * @property {Event} attach
  * @property {Event} detach
@@ -79,6 +85,22 @@ class LinkEvent extends Event {
  * @abstract
  */
 class MemberEntity extends Entity {
+	/** @type {Color} */
+	static #colorInitial = colorBackground.invert();
+	/**
+	 * @readonly
+	 * @returns {Color}
+	 */
+	static get colorInitial() {
+		return MemberEntity.#colorInitial;
+	}
+	/**
+	 * @param {Palette} palette 
+	 * @returns {void}
+	 */
+	static setHighlighting(palette) {
+		throw new ReferenceError(`Not implemented function`);
+	}
 	/**
 	 * @template {keyof MemberEntityEventMap} K
 	 * @param {K} type 
@@ -87,6 +109,7 @@ class MemberEntity extends Entity {
 	 * @returns {void}
 	 */
 	addEventListener(type, listener, options = false) {
+		super.isMesh;
 		// @ts-ignore
 		return super.addEventListener(type, listener, options);
 	}
@@ -116,13 +139,13 @@ class VertexMember extends MemberEntity {
 	/** @type {Map<number, VertexMember>} */
 	static #members = new Map();
 	/** @type {number} */
-	static #diameter;
+	static #radius;
 	/**
 	 * @readonly
 	 * @returns {number}
 	 */
-	static get diameter() {
-		return this.#diameter;
+	static get radius() {
+		return this.#radius;
 	}
 	/**
 	 * @param {Readonly<Point2D>} point 
@@ -132,7 +155,7 @@ class VertexMember extends MemberEntity {
 	static #canPlaceAt(point, exception = null) {
 		for (const [, vertex] of VertexMember.#members) {
 			if (vertex === exception) continue;
-			if (hypot(...point["-"](vertex.position)) < VertexMember.#diameter) return false;
+			if (point.getDistanceFrom(vertex.position) < VertexMember.#radius * 2) return false;
 		}
 		return true;
 	}
@@ -162,10 +185,19 @@ class VertexMember extends MemberEntity {
 		vertex.position = point;
 		vertex.dispatchEvent(new Event(`attach`));
 	}
+	/**
+	 * @param {Set<number>[]?} data 
+	 * @returns {void}
+	 */
+	static setHighlightMode(data) {
+		for (const vertex of VertexMember.#members) {
+
+		}
+	}
 	static {
-		VertexMember.#diameter = min(canvas.width, canvas.height) / 32;
+		VertexMember.#radius = min(canvas.width, canvas.height) / 64;
 		window.addEventListener(`resize`, (event) => {
-			VertexMember.#diameter = min(canvas.width, canvas.height) / 32;
+			VertexMember.#radius = min(canvas.width, canvas.height) / 64;
 		});
 	}
 	/**
@@ -196,10 +228,10 @@ class VertexMember extends MemberEntity {
 
 		this.addEventListener(`render`, () => {
 			context.save();
-			context.fillStyle = colorForeground.invert().toString(true);
-			const { position: position } = this;
+			context.fillStyle = VertexMember.colorInitial.toString(true);
+			const { position } = this;
 			context.beginPath();
-			context.arc(position.x, position.y, VertexMember.#diameter / 2, 0, 2 * PI);
+			context.arc(position.x, position.y, VertexMember.#radius, 0, 2 * PI);
 			context.closePath();
 			context.fill();
 			context.restore();
@@ -207,7 +239,7 @@ class VertexMember extends MemberEntity {
 		//#endregion
 		//#region Vertex control
 		this.addEventListener(`click`, (event) => {
-			if (!inputVertexTool.checked) return;
+			if (inputExecuteProgram.checked || !inputVertexTool.checked) return;
 			for (const edge of this.#connections) {
 				this.#connections.delete(edge);
 				edge.dispatchEvent(new LinkEvent(`unlink`, { vertex: this, edge: edge }));
@@ -220,13 +252,13 @@ class VertexMember extends MemberEntity {
 		 * @todo Fix position change. Fix engine for that.
 		 */
 		this.addEventListener(`dragbegin`, (event) => {
-			if (!inputVertexTool.checked) return;
+			if (inputExecuteProgram.checked || !inputVertexTool.checked) return;
 			this.#setMoveState(event.position);
 		});
 		//#endregion
 		//#region Edge control
 		this.addEventListener(`dragbegin`, (event) => {
-			if (!inputEdgeTool.checked) return;
+			if (inputExecuteProgram.checked || !inputEdgeTool.checked) return;
 			EdgeMember.tryAttachFrom(this);
 		});
 		//#endregion
@@ -256,24 +288,18 @@ class VertexMember extends MemberEntity {
 	/** @type {Set<EdgeMember>} */
 	#connections = new Set();
 	/**
+	 * @readonly
 	 * @returns {Readonly<Point2D>}
 	 */
 	get size() {
-		return Point2D.repeat(VertexMember.#diameter);
-	}
-	/**
-	 * @param {Readonly<Point2D>} value 
-	 * @returns {void}
-	 */
-	set size(value) {
-		throw new TypeError(`Cannot set property size of #<VertexMember> which has only a getter`);
+		return Point2D.repeat(VertexMember.#radius * 2);
 	}
 	/**
 	 * @param {Readonly<Point2D>} point 
 	 * @returns {boolean}
 	 */
 	isMesh(point) {
-		return (hypot(...point["-"](this.position)) <= VertexMember.#diameter / 2);
+		return (point.getDistanceFrom(this.position) <= VertexMember.#radius);
 	}
 	/**
 	 * @param {Readonly<Point2D>} point 
@@ -329,45 +355,13 @@ class VertexMember extends MemberEntity {
  * @typedef {MemberEntityEventMap & VirtualEdgeMemberEventMap} EdgeMemberEventMap
  */
 
-class EdgeMember extends MemberEntity {
-	//#region Socket
-	/**
-	 * @typedef {InstanceType<EdgeMember.Socket>} EdgeMemberSocket
-	 */
-	static Socket = class EdgeMemberSocket {
-		/**
-		 * @param {EdgeMember} owner 
-		 */
-		constructor(owner) {
-			this.#owner = owner;
-		}
-		/** @type {EdgeMember} */
-		#owner;
-		/** @type {VertexMember?} */
-		#content = null;
-		/**
-		 * @returns {VertexMember?}
-		 */
-		get content() {
-			return this.#content;
-		}
-		/**
-		 * @returns {VertexMember}
-		 */
-		get ensured() {
-			if (this.#content === null) throw new ReferenceError(`The content of ${this.#owner.name} is missing`);
-			return this.#content;
-		}
-		/**
-		 * @param {VertexMember?} value 
-		 * @returns {void}
-		 */
-		set content(value) {
-			this.#content = value;
-		}
-	};
-	//#endregion
+/**
+ * @typedef {InstanceType<EdgeMember.Socket>} EdgeMemberSocket
+ */
 
+class EdgeMember extends MemberEntity {
+	/** @type {Set<EdgeMember>} */
+	static #members = new Set();
 	/** @type {boolean} */
 	static #locked = true;
 	/**
@@ -415,6 +409,55 @@ class EdgeMember extends MemberEntity {
 	}
 	/** @type {Readonly<Point2D>} */
 	static #pointPointerPosition;
+	/**
+	 * @param {Palette} palette 
+	 * @returns {void}
+	 */
+	static setHighlighting(palette) {
+		for (const edge of EdgeMember.#members) {
+			for (const [path, color] of palette) {
+				if (path.has(edge.#socketFrom.ensured.index) && path.has(edge.#socketTo.ensured.index)) {
+					edge.#color = color;
+				}
+			}
+		}
+	}
+
+	//#region Socket
+	static Socket = class EdgeMemberSocket {
+		/**
+		 * @param {EdgeMember} owner 
+		 */
+		constructor(owner) {
+			this.#owner = owner;
+		}
+		/** @type {EdgeMember} */
+		#owner;
+		/** @type {VertexMember?} */
+		#content = null;
+		/**
+		 * @returns {VertexMember?}
+		 */
+		get content() {
+			return this.#content;
+		}
+		/**
+		 * @returns {VertexMember}
+		 */
+		get ensured() {
+			if (this.#content === null) throw new ReferenceError(`The content of ${this.#owner.name} is missing`);
+			return this.#content;
+		}
+		/**
+		 * @param {VertexMember?} value 
+		 * @returns {void}
+		 */
+		set content(value) {
+			this.#content = value;
+		}
+	};
+	//#endregion
+
 	static {
 		EdgeMember.#width = min(canvas.width, canvas.height) / 128;
 		window.addEventListener(`resize`, (event) => {
@@ -438,10 +481,17 @@ class EdgeMember extends MemberEntity {
 
 		//#region Behavior
 		this.addEventListener(`attach`, (event) => {
-			graph.addEdge(this.#socketFrom.ensured.index, this.#socketTo.ensured.index);
+			try {
+				graph.addEdge(this.#socketFrom.ensured.index, this.#socketTo.ensured.index);
+				EdgeMember.#members.add(this);
+			} catch (error) {
+				// destroy this
+				throw error;
+			}
 		});
 		this.addEventListener(`detach`, (event) => {
 			graph.removeEdge(this.#socketFrom.ensured.index, this.#socketTo.ensured.index);
+			EdgeMember.#members.delete(this);
 		});
 
 		this.addEventListener(`unlink`, (event) => {
@@ -456,21 +506,22 @@ class EdgeMember extends MemberEntity {
 
 		this.addEventListener(`render`, () => {
 			context.save();
-			context.lineWidth = EdgeMember.#width;
-			context.strokeStyle = colorForeground.invert().toString(true);
+			context.fillStyle = this.#color.toString(true);
 			const pointFrom = Object.map(this.#socketFrom.content, content => content.position) ?? EdgeMember.#pointPointerPosition;
 			const pointTo = Object.map(this.#socketTo.content, content => content.position) ?? EdgeMember.#pointPointerPosition;
+			const angle = Math.atan2(pointFrom.y - pointTo.y, pointFrom.x - pointTo.x);
+			const offset = Math.asin(EdgeMember.#width / 2 / VertexMember.radius);
 			context.beginPath();
-			context.moveTo(pointFrom.x, pointFrom.y);
-			context.lineTo(pointTo.x, pointTo.y);
+			context.arc(pointFrom.x, pointFrom.y, VertexMember.radius, angle + PI - offset, angle + PI + offset);
+			context.arc(pointTo.x, pointTo.y, VertexMember.radius, angle - offset, angle + offset);
 			context.closePath();
-			context.stroke();
+			context.fill();
 			context.restore();
 		});
 		//#endregion
 		//#region Edge control
 		this.addEventListener(`click`, (event) => {
-			if (!inputEdgeTool.checked) return;
+			if (inputExecuteProgram.checked || !inputEdgeTool.checked) return;
 			this.dispatchEvent(new Event(`detach`));
 			for (const socket of [this.#socketFrom, this.#socketTo]) {
 				const previous = socket.ensured;
@@ -488,6 +539,7 @@ class EdgeMember extends MemberEntity {
 	/**
 	 * @param {VertexMember} vertex 
 	 * @returns {[EdgeMemberSocket, EdgeMemberSocket]}
+	 * @throws {ReferenceError}
 	 */
 	#orderSocketsBy(vertex) {
 		const socketFrom = this.#socketFrom;
@@ -496,7 +548,7 @@ class EdgeMember extends MemberEntity {
 			return [socketFrom, socketTo];
 		} else if (socketTo.content === vertex) {
 			return [socketTo, socketFrom];
-		} else throw new ReferenceError(`Unabel to find vertex '${vertex.name}' in sockets`);
+		} else throw new ReferenceError(`Unable to find vertex '${vertex.name}' in sockets`);
 	}
 	/**
 	 * @returns {string}
@@ -523,13 +575,6 @@ class EdgeMember extends MemberEntity {
 		return Object.freeze(new Point2D(abs(to.x - from.x), abs(to.y - from.y)));
 	}
 	/**
-	 * @param {Readonly<Point2D>} value 
-	 * @returns {void}
-	 */
-	set size(value) {
-		throw new TypeError(`Cannot set property size of #<EdgeMember> which has only a getter`);
-	}
-	/**
 	 * @param {Readonly<Point2D>} point 
 	 * @returns {boolean}
 	 */
@@ -545,26 +590,49 @@ class EdgeMember extends MemberEntity {
 		const distanceCenter1Center2 = hypot(...pointCenter1Center2);
 		return (
 			abs(pointCenter1Mouse.y - pointCenter1Mouse.x * pointCenter1Center2.y / pointCenter1Center2.x) < EdgeMember.#width / 2 &&
-			VertexMember.diameter / 2 < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2 &&
-			VertexMember.diameter / 2 < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2
+			VertexMember.radius < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2 &&
+			VertexMember.radius < distanceCenter1Mouse && distanceCenter1Mouse < distanceCenter1Center2
 		);
 	}
+	/** @type {Color} */
+	#color = EdgeMember.colorInitial;
 }
 //#endregion
-//#region Canvas
+//#region Interface
 await window.load(Promise.fulfill(() => {
 	userInterface.addEventListener(`click`, (event) => {
-		if (!inputVertexTool.checked) return;
+		if (inputExecuteProgram.checked || !inputVertexTool.checked) return;
 		VertexMember.tryAttachAt(event.position);
 	});
 
+	inputExecuteProgram.addEventListener(`change`, async () => await window.ensure(async () => {
+		inputVertexTool.disabled = inputExecuteProgram.checked;
+		inputEdgeTool.disabled = inputExecuteProgram.checked;
+
+		/** @type {Palette} */
+		const palette = new Map((inputExecuteProgram.checked
+			? Graph.DFS.getBiconnectedComponents(graph).map((graph, index, array) => new DataPair(graph.vertices, Color.viaHSL(index / array.length * 360, 100, 50)))
+			: [new DataPair(graph.vertices, colorBackground.invert())]
+		).map(rule => rule.toArray()));
+
+		EdgeMember.setHighlighting(palette);
+		// VertexMember.setHighlighting(palette);
+	}));
+
 	buttonCaptureCanvas.addEventListener(`click`, async () => await window.ensure(() => {
-		console.log(Graph.DFS.getBiconnectedComponents(graph));
-		// canvas.toBlob((blob) => {
-		// 	if (blob === null) throw new ReferenceError(`Unable to initialize canvas for capture`);
-		// 	navigator.download(new File([blob], `${Date.now()}.png`));
-		// });
-	}, false));
+		const canvasClone = document.createElement(`canvas`);
+		canvasClone.width = canvas.width;
+		canvasClone.height = canvas.height;
+		const contextClone = canvasClone.getContext(`2d`) ?? (() => {
+			throw new TypeError(`Context is missing`);
+		})();
+		contextClone.fillStyle = colorBackground.toString(true);
+		contextClone.fillRect(0, 0, canvasClone.width, canvasClone.height);
+		contextClone.drawImage(canvas, 0, 0);
+		canvasClone.toBlob((blob) => {
+			if (blob === null) throw new ReferenceError(`Unable to initialize canvas for capture`);
+			navigator.download(new File([blob], `${Date.now()}.png`));
+		});
+	}));
 }), 200, 1000);
-Reflect.set(window, `graph`, graph);
 //#endregion
