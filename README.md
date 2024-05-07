@@ -3,7 +3,7 @@
 ## Information
 
 ## Feed
-### 0.7.1 : Adaptive Game Engine 1.5.0 (05.05.2024)
+### 0.7.1 : Adaptive Game Engine 1.5.0 (07.05.2024)
 - Created and wrote  `graph1.json`.
 - Created and wrote  `graph2.json`.
 
