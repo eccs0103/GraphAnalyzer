@@ -3,6 +3,10 @@
 ## Information
 
 ## Feed
+### 0.7.1 : Adaptive Game Engine 1.5.0 (05.05.2024)
+- Created and wrote  `graph1.json`.
+- Created and wrote  `graph2.json`.
+
 ### 0.7.0 : Adaptive Game Engine 1.5.0 (05.05.2024)
 - Reworked some features from the previos commit.
 - Added simple dfs traversal.
