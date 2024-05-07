@@ -373,7 +373,7 @@ class Memory {
 		};
 	}
 	/** @type {string} */
-	#valueTextbox = `{\n\t"vertices": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ],\n\t"connections": [\n\t\t{ "from": 1, "to": 2 },\n\t\t{ "from": 4, "to": 6 },\n\t\t{ "from": 8, "to": 12 }\n\t]\n}`;
+	#valueTextbox = `{\n\t"vertices": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],\n\t"connections": [\n\t\t{ "from": 0, "to": 1 },\n\t\t{ "from": 1, "to": 2 },\n\t\t{ "from": 2, "to": 3 },\n\t\t{ "from": 0, "to": 3 },\n\t\t{ "from": 1, "to": 4 },\n\t\t{ "from": 3, "to": 4 },\n\t\t{ "from": 4, "to": 5 },\n\t\t{ "from": 5, "to": 6 },\n\t\t{ "from": 6, "to": 7 },\n\t\t{ "from": 7, "to": 5 },\n\t\t{ "from": 5, "to": 8 },\n\t\t{ "from": 8, "to": 9 },\n\t\t{ "from": 9, "to": 5 }\n\t]\n}`;
 	/**
 	 * @returns {string}
 	 */

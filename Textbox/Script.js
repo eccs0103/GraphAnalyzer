@@ -26,9 +26,7 @@ await window.load(Promise.fulfill(() => {
 	buttonExecuteProgram.addEventListener(`click`, async (event) => await window.ensure(async () => {
 		const graph = Graph.import(JSON.parse(textareaInputField.value));
 		const subgraphs = Graph.DFS.getBiconnectedComponents(graph);
-		const a = subgraphs.map(subgraph => JSON.stringify(subgraph.export(), undefined, `\t`));
-		console.log(...a);
-		// await window.alertAsync(a);
+		await window.alertAsync(subgraphs.map(subgraph => JSON.stringify(subgraph.export(), undefined, `    `)).join(`\n\n`));
 	}));
 	//#endregion
 }), 200, 200);

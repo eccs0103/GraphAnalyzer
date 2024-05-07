@@ -611,7 +611,7 @@ await window.load(Promise.fulfill(() => {
 
 		/** @type {Palette} */
 		const palette = new Map((inputExecuteProgram.checked
-			? Graph.DFS.getBiconnectedComponents(graph).map((graph, index, array) => new DataPair(graph.vertices, Color.viaHSL(index / array.length * 360, 100, 50)))
+			? await window.load(Promise.resolve(Graph.DFS.getBiconnectedComponents(graph).map((graph, index, array) => new DataPair(graph.vertices, Color.viaHSL(index / array.length * 360, 100, 50)))))
 			: [new DataPair(graph.vertices, colorBackground.invert())]
 		).map(rule => rule.toArray()));
 
