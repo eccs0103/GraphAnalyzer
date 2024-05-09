@@ -62,11 +62,9 @@ class Graph {
 	 * @returns {GraphNotation}
 	 */
 	export() {
-		/** @type {EdgeNotation[]}*/
-		const connections = Graph.DFS.walkDepthFirst(this).map(edge => { return { from: edge[0], to: edge[1] }; });
 		return {
 			vertices: Array.from(this.vertices),
-			connections: connections
+			connections: Graph.DFS.walkDepthFirst(this).map(([from, to]) => ({ from, to }))
 		};
 	}
 
@@ -124,6 +122,8 @@ class Graph {
 		/**
 		 * @param {Graph} graph 
 		 * @returns {Graph[]}
+		 * @throws {TypeError}
+		 * @throws {EvalError}
 		 */
 		static getBiconnectedComponents(graph) {
 			const dfs = new GraphDFS();
@@ -135,16 +135,15 @@ class Graph {
 			}
 			return dfs.#paths
 				.filter(path => path.length > 0)
-				.map(path => graph.getMaxSubgraph(
-					new Set(path
-						.flat()
-						.map(vertex => graph.#getIndex(vertex))
-					)
-				));
+				.map(path => graph.getSubgraphWith(new Set(path
+					.flat()
+					.map(vertex => graph.#getIndex(vertex))
+				)));
 		}
 		/**
 		 * @param {Graph} graph
-		 * @returns {[Number, number][]}
+		 * @returns {[number, number][]}
+		 * @throws {EvalError}
 		 */
 		static walkDepthFirst(graph) {
 			const dfs = new GraphDFS();
@@ -153,7 +152,8 @@ class Graph {
 					dfs.#walkDepthFirst(vertex);
 				}
 			}
-			return dfs.#stack.clear().map(edge => [graph.#getIndex(edge[0]), graph.#getIndex(edge[1])]);
+			return dfs.#stack.clear()
+				.map(([from, to]) => [graph.#getIndex(from), graph.#getIndex(to)]);
 		}
 		/**
 		 * @param {Graph} graph 
@@ -235,68 +235,78 @@ class Graph {
 	/** @type {StrictMap<number, GraphVertex>} */
 	#vertices = new StrictMap();
 	/**
-	 * @readonly
-	 * @returns {Set<number>}
-	 */
-	get vertices() {
-		return new Set(this.#vertices.keys());
-	}
-	/** @type {StrictMap<GraphVertex, number>} */
-	#indices = new StrictMap();
-	/**
-	 * @param {number} index
+	 * @param {number} index 
 	 * @returns {GraphVertex}
-	 * @throws {TypeError}
-	 * @throws {RangeError}
+	 * @throws {EvalError}
 	 */
 	#getVertex(index) {
-		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
-		return this.#vertices.ask(index) ?? (() => {
-			throw new RangeError(`Vertex with index ${index} doesn't exist`);
-		})();
+		if (!this.#vertices.has(index)) throw new EvalError(`Vertex with index ${index} doesn't exist`);
+		return this.#vertices.get(index);
 	}
 	/**
-	 * @param {GraphVertex} vertex
-	 * @returns {number}
-	 */
-	#getIndex(vertex) {
-		return this.#indices.get(vertex) ?? NaN;
-	}
-	/**
-	 * @param {number} index
+	 * @param {number} index 
+	 * @param {GraphVertex} vertex 
 	 * @returns {void}
 	 * @throws {EvalError}
 	 */
-	addVertex(index) {
-		if (this.vertices.has(index)) throw new EvalError(`Vertex of index ${index} already exists`);
-		const vertex = new Graph.Vertex();
+	#setVertex(index, vertex) {
+		if (this.#vertices.has(index)) throw new EvalError(`Vertex of index ${index} already exists`);
 		this.#vertices.set(index, vertex);
 		this.#indices.set(vertex, index);
 	}
 	/**
+	 * @readonly
+	 * @returns {Readonly<Set<number>>}
+	 */
+	get vertices() {
+		return Object.freeze(new Set(this.#vertices.keys()));
+	}
+	/** @type {StrictMap<GraphVertex, number>} */
+	#indices = new StrictMap();
+	/**
+	 * @param {GraphVertex} vertex
+	 * @returns {number}
+	 * @throws {EvalError}
+	 */
+	#getIndex(vertex) {
+		if (!this.#indices.has(vertex)) throw new EvalError(`Vertex doesn't exist`);
+		return this.#indices.get(vertex);
+	}
+	/**
 	 * @param {number} index
 	 * @returns {void}
 	 * @throws {TypeError}
-	 * @throws {RangeError}
+	 * @throws {EvalError}
+	 */
+	addVertex(index) {
+		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
+		this.#setVertex(index, new Graph.Vertex());
+	}
+	/**
+	 * @param {number} index
+	 * @returns {void}
+	 * @throws {TypeError}
 	 * @throws {EvalError}
 	 */
 	removeVertex(index) {
-		const vertexSelected = this.#getVertex(index);
-		for (const neighbor of vertexSelected.neighbors) {
-			Graph.Vertex.disconnect(vertexSelected, neighbor);
+		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
+		const vertex = this.#getVertex(index);
+		for (const neighbor of vertex.neighbors) {
+			Graph.Vertex.disconnect(vertex, neighbor);
 		}
 		this.#vertices.delete(index);
-		this.#indices.delete(vertexSelected);
+		this.#indices.delete(vertex);
 	}
 	/**
 	 * @param {number} from
 	 * @param {number} to
 	 * @returns {void}
 	 * @throws {TypeError}
-	 * @throws {RangeError}
 	 * @throws {EvalError}
 	 */
 	addEdge(from, to) {
+		if (!Number.isInteger(from)) throw new TypeError(`Index ${from} is not finite integer number`);
+		if (!Number.isInteger(to)) throw new TypeError(`Index ${to} is not finite integer number`);
 		[from, to] = [from, to].sort((a, b) => a - b);
 		const vertexFrom = this.#getVertex(from);
 		const vertexTo = this.#getVertex(to);
@@ -311,10 +321,11 @@ class Graph {
 	 * @param {number} to
 	 * @returns {void}
 	 * @throws {TypeError}
-	 * @throws {RangeError}
 	 * @throws {EvalError}
 	 */
 	removeEdge(from, to) {
+		if (!Number.isInteger(from)) throw new TypeError(`Index ${from} is not finite integer number`);
+		if (!Number.isInteger(to)) throw new TypeError(`Index ${to} is not finite integer number`);
 		[from, to] = [from, to].sort((a, b) => a - b);
 		const vertexFrom = this.#getVertex(from);
 		const vertexTo = this.#getVertex(to);
@@ -327,18 +338,41 @@ class Graph {
 	/**
 	 * @param {Set<number>} vertices
 	 * @returns {Graph}
+	 * @throws {TypeError}
+	 * @throws {EvalError}
 	 */
-	getMaxSubgraph(vertices) {
-		const component = new Graph();
-		const verticeArr = Array.from(vertices);
-		for (let i = 0; i < verticeArr.length; i++) {
-			if (i === 0) component.addVertex(verticeArr[i]);
-			for (let j = i + 1; j < verticeArr.length; j++) {
-				if (i === 0) component.addVertex(verticeArr[j]);
-				if (this.#getVertex(verticeArr[i]).isNeighbor(this.#getVertex(verticeArr[j]))) component.addEdge(verticeArr[i], verticeArr[j]);
+	getSubgraphWith(vertices) {
+		const subgraph = new Graph();
+		const arrayVertices = Array.from(vertices);
+		for (let index = 0; index < arrayVertices.length; index++) {
+			const indexFrom = arrayVertices[index];
+			const vertexFrom = this.#getVertex(indexFrom);
+			if (index === 0) subgraph.addVertex(indexFrom);
+			for (let index2 = index + 1; index2 < arrayVertices.length; index2++) {
+				const indexTo = arrayVertices[index2];
+				const vertexTo = this.#getVertex(indexTo);
+				if (index === 0) subgraph.addVertex(indexTo);
+				if (vertexFrom.isNeighbor(vertexTo)) {
+					subgraph.addEdge(indexFrom, indexTo);
+				}
 			}
 		}
-		return component;
+		return subgraph;
+	}
+	/**
+	 * @param {number} index 
+	 * @returns {Set<number>}
+	 * @throws {TypeError}
+	 * @throws {EvalError}
+	 */
+	getNeighborsOf(index) {
+		if (!Number.isInteger(index)) throw new TypeError(`Index ${index} is not finite integer number`);
+		/** @type {Set<number>} */
+		const setNeighbors = new Set();
+		for (const neighbor of this.#getVertex(index).neighbors) {
+			setNeighbors.add(this.#getIndex(neighbor));
+		};
+		return setNeighbors;
 	}
 }
 //#endregion
