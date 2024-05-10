@@ -5,12 +5,12 @@
 import { Entity } from "../Scripts/Components/Entity.js";
 import { userInterface } from "../Scripts/Components/InterfaceItem.js";
 import { canvas, context, progenitor } from "../Scripts/Components/Node.js";
-import { DataPair, StrictMap } from "../Scripts/Modules/Extensions.js";
+import { DataPair, Stack, StrictMap } from "../Scripts/Modules/Extensions.js";
 import { Point2D } from "../Scripts/Modules/Measures.js";
 import { Color } from "../Scripts/Modules/Palette.js";
 import { Graph } from "../Scripts/Structure.js";
 
-const { min, abs, hypot, atan2, PI } = Math;
+const { min, abs, hypot, atan2, PI, sqrt, toFactor, toDegrees, toRadians } = Math;
 
 /** 
  * @type {Graph}
@@ -21,6 +21,11 @@ const colorBackground = await window.ensure(() => {
 		throw new EvalError(`Unable to parse background color`);
 	})();
 });
+const mapSearch = location.getSearchMap();
+const isExperimental = (() => {
+	const experiments = mapSearch.get(`experiments`);
+	return (experiments === undefined || experiments === `true`);
+})();
 
 //#region Definition
 const inputVertexTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#vertex-tool`));
@@ -127,6 +132,10 @@ class MemberEntity extends Entity {
 //#endregion
 //#region Vertex member
 /**
+ * @typedef {[number, Color]} HighlightRule
+ */
+
+/**
  * @typedef {{}} VirtualVertexEntityEventMap
  * 
  * @typedef {MemberEntityEventMap & VirtualVertexEntityEventMap} VertexEntityEventMap
@@ -141,28 +150,43 @@ class VertexEntity extends MemberEntity {
 		for (const [index, vertex] of VertexEntity.#members) {
 			const { x, y } = vertex.position;
 			/** @type {[number, Color][]} */
-			const colors = [];
+			const rules = [];
 			for (const [graph, color] of palette) {
 				if (!graph.vertices.has(index)) continue;
 				for (const indexNeighbor of graph.getNeighborsOf(index)) {
 					const pointNeighborPosition = VertexEntity.#members.get(indexNeighbor).position;
 					const angle = atan2(y - pointNeighborPosition.y, x - pointNeighborPosition.x) + PI;
-					colors.push([angle, color]);
+					rules.push([angle, color]);
 				}
 			}
-			vertex.#colors = new Map();
-			if (colors.length > 0) {
-				colors.sort(([angle1], [angle2]) => angle1 - angle2);
-				const [angleLast, colorLast] = colors[colors.length - 1];
-				for (let index = 0; index < colors.length; index++) {
-					const [anglePrevious, colorPrevious] = (index > 0
-						? colors[index - 1]
-						: [angleLast - 2 * PI, colorLast]
+			/**
+			 * @todo Get self together, then refactor this shit.
+			 */
+			vertex.#sectors = new Map();
+			if (rules.length > 0) {
+				rules.sort(([angle1], [angle2]) => angle1 - angle2);
+				/** @type {[number, Color][]} */
+				const stack = [];
+				const [angleLast, colorLast] = rules[rules.length - 1];
+				let colorLastSector = colorLast;
+				for (let index = 0; index < rules.length; index++) {
+					const [anglePrevious, colorPrevious] = (index < 1
+						? [angleLast - 2 * PI, colorLast]
+						: rules[index - 1]
 					);
-					const [angleCurrent] = colors[index];
-					vertex.#colors.set((anglePrevious + angleCurrent) / 2, colorPrevious);
+					const [angleCurrent, colorCurrent] = rules[index];
+					const bisector = (anglePrevious + angleCurrent) / 2;
+					if (bisector > 0) {
+						vertex.#sectors.set(bisector, colorPrevious);
+					} else {
+						stack.push([bisector + 2 * PI, colorPrevious]);
+						colorLastSector = colorCurrent;
+					}
 				}
-				vertex.#colors.set(2 * PI, colorLast);
+				for (const [angle, color] of stack) {
+					vertex.#sectors.set(angle, color);
+				}
+				vertex.#sectors.set(2 * PI, colorLastSector);
 			}
 		}
 	}
@@ -215,6 +239,7 @@ class VertexEntity extends MemberEntity {
 		VertexEntity.#locked = true;
 		progenitor.children.add(vertex);
 		vertex.position = point;
+		vertex.#gradientShadow = vertex.#createShadowGradient(context);
 		vertex.dispatchEvent(new Event(`attach`));
 	}
 	static {
@@ -251,13 +276,18 @@ class VertexEntity extends MemberEntity {
 
 		this.addEventListener(`render`, () => {
 			context.save();
-			this.#fillSector(context, 0, 2 * PI);
 			let previous = 0;
-			for (const [angle, color] of this.#colors) {
+			for (const [angle, color] of this.#sectors) {
+				context.globalCompositeOperation = `source-over`;
 				this.#fillSector(context, previous, angle, color);
+				if (isExperimental) {
+					context.globalCompositeOperation = `xor`;
+					this.#fillShadow(context);
+				}
 				previous = angle;
 			}
-			context.closePath();
+			context.globalCompositeOperation = `destination-over`;
+			this.#fillSector(context, 0, 2 * PI);
 			context.restore();
 		});
 		//#endregion
@@ -366,12 +396,13 @@ class VertexEntity extends MemberEntity {
 		this.addEventListener(`dragend`, (event) => {
 			if (!this.#canMoveAt(event.position)) {
 				this.position = position;
+				this.#gradientShadow = this.#createShadowGradient(context);
 			}
 			controller.abort();
 		}, { signal: controller.signal });
 	}
 	/** @type {Map<number, Color>} */
-	#colors = new Map();
+	#sectors = new Map();
 	/**
 	 * @param {CanvasRenderingContext2D} context 
 	 * @param {number} begin 
@@ -386,6 +417,33 @@ class VertexEntity extends MemberEntity {
 		context.arc(x, y, VertexEntity.#radius, begin, end);
 		context.closePath();
 		context.fillStyle = color.toString(true);
+		context.fill();
+	}
+	/**
+	 * @param {CanvasRenderingContext2D} context
+	 * @returns {CanvasGradient}
+	 */
+	#createShadowGradient(context) {
+		const { x, y } = this.position;
+		const gradientShadow = context.createRadialGradient(x, y, 0, x, y, VertexEntity.#radius);
+		const parts = 3;
+		for (let index = 0; index < parts; index++) {
+			const factor = toFactor(index, parts - 1);
+			const patency = sqrt(1 - factor);
+			gradientShadow.addColorStop(factor, Color.viaHSL(0, 0, 0, patency)
+				.toString(true)
+			);
+		}
+		return gradientShadow;
+	}
+	/** @type {CanvasGradient} */
+	#gradientShadow;
+	/**
+	 * @param {CanvasRenderingContext2D} context 
+	 * @returns {void}
+	 */
+	#fillShadow(context) {
+		context.fillStyle = this.#gradientShadow;
 		context.fill();
 	}
 }
