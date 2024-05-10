@@ -3,6 +3,13 @@
 ## Information
 
 ## Feed
+### 1.1.0 : Adaptive Game Engine 1.5.0 (10.05.2024)
+- Model improved.
+- Errors described.
+- Added function `Graph.getNeighborsOf`.
+- Added vertex filling and gradient (in experimental mode).
+- Loading fixed.
+
 ### 1.0.0 : Adaptive Game Engine 1.5.0 (07.05.2024)
 *First completed version.*
 - Now, when taking canvas captures, a background is added.
