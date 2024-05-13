@@ -3,6 +3,10 @@
 ## Information
 
 ## Feed
+### 1.1.2: Adaptive Game Engine 1.5.0 (13.05.2024)
+- Added glowing effect.
+- Fixed bug with identical faces.
+
 ### 1.1.0 : Adaptive Game Engine 1.5.0 (10.05.2024)
 - Model improved.
 - Errors described.

@@ -5,12 +5,12 @@
 import { Entity } from "../Scripts/Components/Entity.js";
 import { userInterface } from "../Scripts/Components/InterfaceItem.js";
 import { canvas, context, progenitor } from "../Scripts/Components/Node.js";
-import { DataPair, Stack, StrictMap } from "../Scripts/Modules/Extensions.js";
+import { DataPair, StrictMap } from "../Scripts/Modules/Extensions.js";
 import { Point2D } from "../Scripts/Modules/Measures.js";
 import { Color } from "../Scripts/Modules/Palette.js";
 import { Graph } from "../Scripts/Structure.js";
 
-const { min, abs, hypot, atan2, PI, sqrt, toFactor, toDegrees, toRadians } = Math;
+const { min, abs, hypot, atan2, PI, sqrt, toFactor, sin } = Math;
 
 /** 
  * @type {Graph}
@@ -21,11 +21,6 @@ const colorBackground = await window.ensure(() => {
 		throw new EvalError(`Unable to parse background color`);
 	})();
 });
-const mapSearch = location.getSearchMap();
-const isExperimental = (() => {
-	const experiments = mapSearch.get(`experiments`);
-	return (experiments === undefined || experiments === `true`);
-})();
 
 //#region Definition
 const inputVertexTool = await window.ensure(() => document.getElement(HTMLInputElement, `input#vertex-tool`));
@@ -99,12 +94,39 @@ class MemberEntity extends Entity {
 	static get colorInitial() {
 		return MemberEntity.#colorInitial;
 	}
+	/** @type {CanvasGradient} */
+	static #gradientShine;
+	/** @type {boolean} */
+	/**
+	 * @returns {void}
+	 */
+	static shine() {
+		context.save();
+		context.globalCompositeOperation = `luminosity`;
+		context.fillStyle = MemberEntity.#gradientShine;
+		// context.fillRect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+		context.fill();
+		context.restore();
+	}
 	/**
 	 * @param {Palette} palette 
 	 * @returns {void}
 	 */
 	static markHighlighting(palette) {
 		throw new ReferenceError(`Not implemented function`);
+	}
+	static {
+		progenitor.addEventListener(`update`, () => {
+			const gradientShine = context.createLinearGradient(-canvas.width / 2, -canvas.height / 2, canvas.width / 2, canvas.height / 2);
+			const length = hypot(canvas.width, canvas.height);
+			for (let index = 0; index < length; index++) {
+				const factorIndex = toFactor(index, length);
+				const factorTime = toFactor(Date.now(), 6000);
+				const factorColor = 1 - sqrt(abs(sin((4 * factorIndex - factorTime) * 2 * PI)));
+				gradientShine.addColorStop(factorIndex, MemberEntity.colorInitial.pass(factorColor).toString(true));
+			}
+			MemberEntity.#gradientShine = gradientShine;
+		});
 	}
 	/**
 	 * @template {keyof MemberEntityEventMap} K
@@ -280,10 +302,7 @@ class VertexEntity extends MemberEntity {
 			for (const [angle, color] of this.#sectors) {
 				context.globalCompositeOperation = `source-over`;
 				this.#fillSector(context, previous, angle, color);
-				if (isExperimental) {
-					context.globalCompositeOperation = `xor`;
-					this.#fillShadow(context);
-				}
+				MemberEntity.shine();
 				previous = angle;
 			}
 			context.globalCompositeOperation = `destination-over`;
@@ -586,10 +605,12 @@ class EdgeEntity extends MemberEntity {
 				graph.addEdge(this.#socketFrom.ensured.index, this.#socketTo.ensured.index);
 				EdgeEntity.#members.add(this);
 			} catch (error) {
-				/**
-				 * @todo Destory this entity
-				 */
-				throw error;
+				for (const socket of [this.#socketFrom, this.#socketTo]) {
+					const previous = socket.ensured;
+					socket.content = null;
+					previous.dispatchEvent(new LinkEvent(`unlink`, { vertex: previous, edge: this }));
+				}
+				progenitor.children.remove(this);
 			}
 		});
 		this.addEventListener(`detach`, (event) => {
@@ -620,6 +641,7 @@ class EdgeEntity extends MemberEntity {
 			context.closePath();
 			context.fill();
 			context.restore();
+			MemberEntity.shine();
 		});
 		//#endregion
 		//#region Edge control
@@ -739,7 +761,7 @@ await window.load(Promise.fulfill(() => {
 		 */
 		/** @type {Palette} */
 		const palette = new Map((inputExecuteProgram.checked
-			? await window.load(Promise.resolve(Graph.DFS.getBiconnectedComponents(graph).map((graph, index, array) => new DataPair(graph, Color.viaHSL(index / array.length * 360, 100, 50)))))
+			? await window.load(Promise.resolve(Graph.DFS.getBiconnectedComponents(graph).map((graph, index, array) => new DataPair(graph, Color.viaHSL(index / array.length * 360, 100, 40)))))
 			: [new DataPair(graph, MemberEntity.colorInitial)]
 		).map(rule => rule.toArray()));
 

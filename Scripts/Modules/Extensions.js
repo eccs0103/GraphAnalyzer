@@ -607,7 +607,7 @@ Math.toRadians = function (degrees) {
  * @returns {number} The mapped value.
  */
 Math.toFactor = function (value, period) {
-	return value % (period + 1) / period;
+	return Math.between(value % (period + 1) / period, 0, 1);
 };
 
 /**
@@ -617,7 +617,7 @@ Math.toFactor = function (value, period) {
  * @returns {number} The mapped value.
  */
 Math.toSignedFactor = function (value, period) {
-	return value % (period + 1) / period * 2 - 1;
+	return Math.toFactor(value, period) * 2 - 1;
 };
 //#endregion
 //#region Promise
